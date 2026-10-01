@@ -123,6 +123,7 @@ export const ScraperClient = ({ initialDomain }: ScraperClientProps) => {
     filters.productTypes.join(","),
     filters.tags.join(","),
     filters.priceRanges.join(","),
+    String(filters.inStockOnly),
   ].join("|")
 
   const [previousResultKey, setPreviousResultKey] = React.useState(resultKey)
@@ -165,6 +166,13 @@ export const ScraperClient = ({ initialDomain }: ScraperClientProps) => {
   const handleClearFilters = React.useCallback(() => {
     setFilters(EMPTY_FILTERS)
     setQuery("")
+  }, [])
+
+  const handleAvailabilityToggle = React.useCallback(() => {
+    setFilters((current) => ({
+      ...current,
+      inStockOnly: !current.inStockOnly,
+    }))
   }, [])
 
   const isLoading = status === "loading"
@@ -360,13 +368,28 @@ export const ScraperClient = ({ initialDomain }: ScraperClientProps) => {
                   </EmptyDescription>
                 </EmptyHeader>
                 <EmptyContent>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleClearFilters}
-                  >
-                    Clear filters and search
-                  </Button>
+                  {/*
+                    When the in-stock filter is the only thing active, clearing
+                    everything is a blunt instrument. Offer the specific undo
+                    first, since it is the one the user just did.
+                  */}
+                  {filters.inStockOnly ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleAvailabilityToggle}
+                    >
+                      Show sold out products
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleClearFilters}
+                    >
+                      Clear filters and search
+                    </Button>
+                  )}
                 </EmptyContent>
               </Empty>
             )}

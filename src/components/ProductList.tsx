@@ -18,6 +18,8 @@ import {
   formatPrice,
   getDiscountPercent,
   getPrimaryVariant,
+  isFree,
+  isSoldOut,
   parseTags,
   type ShopifyProduct,
 } from "@/lib/shopify"
@@ -78,13 +80,25 @@ const ProductCard = ({
 }) => {
   const image = product.images[0] ?? null
   const variant = getPrimaryVariant(product.variants)
-  const price = formatPrice(
-    variant ? Number.parseFloat(variant.price) : Number.NaN
-  )
   const discount = getDiscountPercent(variant)
   const tags = parseTags(product.tags)
   const href = buildProductUrl(domain, product.handle)
   const extraTagCount = tags.length - VISIBLE_TAGS
+
+  /*
+    Availability drives what the price line says.
+
+    A sold-out product must not show a price. Merely having a price is not
+    evidence of availability -- most sold-out products keep their real price in
+    the payload, and the rest are zeroed -- so "$0.00" was reading as a data bug
+    rather than as "you cannot buy this". "Free" is separated from "Sold out"
+    because a genuinely free, available product is not a broken one.
+  */
+  const soldOut = isSoldOut(product)
+  const free = isFree(product)
+  const price = soldOut
+    ? null
+    : formatPrice(variant ? Number.parseFloat(variant.price) : Number.NaN)
 
   return (
     <Card className="group/card relative overflow-hidden py-0 transition-shadow hover:shadow-md focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-background">
@@ -94,7 +108,13 @@ const ProductCard = ({
           alt={image?.alt || product.title || "Product image"}
         />
 
-        {discount !== null && (
+        {/*
+          A discount on a product nobody can buy is noise, so the badge is
+          suppressed when sold out for the same reason the price is. Sold-out
+          state is carried by the price line below as well, so the badge is a
+          second cue rather than the only one.
+        */}
+        {!soldOut && discount !== null && (
           <Badge
             variant="secondary"
             className="absolute top-2 left-2 bg-background/90 tabular-nums backdrop-blur-sm"
@@ -131,10 +151,15 @@ const ProductCard = ({
         )}
       </CardHeader>
 
-      <CardContent className="mt-auto">
+      {/*
+        `pb-4` rather than relying on the card's own vertical padding: the
+        footer suppresses it (`has-data-[slot=card-footer]:pb-0`) and products
+        without tags have no footer, so the price sat hard against the card edge.
+      */}
+      <CardContent className="mt-auto pb-4">
         {price && (
           <p className="flex flex-wrap items-baseline gap-x-2">
-            <span className="text-base font-semibold tabular-nums">
+            <span className="text-base font-semibold tabular-nums text-price">
               {price}
             </span>
 
@@ -153,6 +178,17 @@ const ProductCard = ({
                 )}
               </span>
             )}
+          </p>
+        )}
+
+        {free && <p className="text-base font-semibold text-price">Free</p>}
+
+        {soldOut && (
+          <p className="text-sm font-medium text-muted-foreground">
+            Sold out
+            <span className="sr-only">
+              . This product cannot currently be bought.
+            </span>
           </p>
         )}
       </CardContent>

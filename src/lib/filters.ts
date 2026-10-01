@@ -1,5 +1,6 @@
 import {
   getLowestVariantPrice,
+  isInStock,
   parseTags,
   type ShopifyProduct,
 } from "@/lib/shopify"
@@ -23,6 +24,13 @@ export type Filters = {
   productTypes: string[]
   tags: string[]
   priceRanges: PriceRangeId[]
+  /**
+   * Hide products where no variant is currently available.
+   *
+   * Off by default. Sold-out items are still real catalogue entries and some
+   * shoppers browse for them, but they should be opt-out rather than opt-in.
+   */
+  inStockOnly: boolean
 }
 
 export const EMPTY_FILTERS: Filters = {
@@ -30,6 +38,7 @@ export const EMPTY_FILTERS: Filters = {
   productTypes: [],
   tags: [],
   priceRanges: [],
+  inStockOnly: false,
 }
 
 /**
@@ -120,6 +129,8 @@ export const applyFilters = (
     .filter((range): range is PriceRange => range !== undefined)
 
   return products.filter((product) => {
+    if (filters.inStockOnly && !isInStock(product)) return false
+
     if (filters.vendors.length && !filters.vendors.includes(product.vendor)) {
       return false
     }
@@ -151,6 +162,7 @@ export const applyFilters = (
 }
 
 export const hasActiveFilters = (filters: Filters): boolean =>
+  filters.inStockOnly ||
   filters.vendors.length > 0 ||
   filters.productTypes.length > 0 ||
   filters.tags.length > 0 ||
@@ -160,7 +172,8 @@ export const countActiveFilters = (filters: Filters): number =>
   filters.vendors.length +
   filters.productTypes.length +
   filters.tags.length +
-  filters.priceRanges.length
+  filters.priceRanges.length +
+  (filters.inStockOnly ? 1 : 0)
 
 /** Case-insensitive search across title, vendor, type, tags and SKU. */
 export const searchProducts = (

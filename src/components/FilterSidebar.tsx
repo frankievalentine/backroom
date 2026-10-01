@@ -3,6 +3,8 @@
 import {
   Building2Icon,
   DollarSignIcon,
+  type LucideIcon,
+  PackageCheckIcon,
   PackageIcon,
   TagIcon,
   XIcon,
@@ -15,6 +17,11 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import {
@@ -25,20 +32,168 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarTrigger,
-  useSidebar,
 } from "@/components/ui/sidebar"
 import {
   buildFilterOptions,
   countActiveFilters,
   EMPTY_FILTERS,
   type FilterOption,
+  type FilterOptions,
   type Filters,
   hasActiveFilters as filtersAreActive,
   PRICE_RANGES,
   type PriceRangeId,
   toggleValue,
 } from "@/lib/filters"
-import type { ShopifyProduct } from "@/lib/shopify"
+import { isSoldOut, type ShopifyProduct } from "@/lib/shopify"
+
+/** One checkbox row, shared by every facet so hit areas and focus stay uniform. */
+const FacetRow = ({
+  id,
+  checked,
+  onToggle,
+  children,
+  trailing,
+}: {
+  id: string
+  checked: boolean
+  onToggle: () => void
+  children: React.ReactNode
+  trailing?: React.ReactNode
+}) => (
+  <div className="flex items-center gap-2 rounded-md px-1 py-1 hover:bg-accent has-[[data-slot=checkbox]:focus-visible]:ring-2 has-[[data-slot=checkbox]:focus-visible]:ring-ring has-[[data-slot=checkbox]:focus-visible]:ring-inset">
+    {/*
+      `nativeButton` is required, not decorative. Base UI renders Checkbox as a
+      `<span>` by default so that an *enclosing* `<label>` can wrap it; this
+      layout uses sibling `<label for>` pairs instead, and a `<span>` is not a
+      labelable element, so the association silently did nothing. The docs call
+      this out directly: use `nativeButton` with sibling labels.
+    */}
+    <Checkbox
+      nativeButton
+      render={<button type="button" />}
+      id={id}
+      checked={checked}
+      onCheckedChange={onToggle}
+    />
+    <Label htmlFor={id} className="min-w-0 flex-1 cursor-pointer font-normal">
+      {children}
+    </Label>
+    {trailing && (
+      <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+        {trailing}
+      </span>
+    )}
+  </div>
+)
+
+type PriceFacetProps = {
+  selected: PriceRangeId[]
+  onToggle: (id: PriceRangeId) => void
+  hideHeading?: boolean
+}
+
+const PriceFacet = ({ selected, onToggle, hideHeading }: PriceFacetProps) => {
+  const instanceId = React.useId()
+  const headingId = `facet-price-${instanceId}`
+
+  return (
+    <section
+      aria-labelledby={hideHeading ? undefined : headingId}
+      aria-label={hideHeading ? "Price" : undefined}
+      className="space-y-2"
+    >
+      {!hideHeading && (
+        <div className="flex items-center gap-2">
+          <DollarSignIcon
+            className="size-4 text-muted-foreground"
+            aria-hidden="true"
+          />
+          <h3 id={headingId} className="text-sm font-medium">
+            Price
+          </h3>
+        </div>
+      )}
+
+      <ul className="space-y-0.5">
+        {PRICE_RANGES.map((range) => (
+          <li key={range.id}>
+            <FacetRow
+              id={`price-${range.id}-${instanceId}`}
+              checked={selected.includes(range.id)}
+              onToggle={() => onToggle(range.id)}
+            >
+              {range.label}
+            </FacetRow>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+type AvailabilityFacetProps = {
+  inStockOnly: boolean
+  onToggle: (value: boolean) => void
+  soldOutCount: number
+  hideHeading?: boolean
+}
+
+/**
+ * In-stock toggle.
+ *
+ * Off by default, because sold-out items are still catalogue entries. The count
+ * of what the toggle hides is shown so the control explains itself before it is
+ * used, rather than appearing to do nothing on a fully in-stock store.
+ */
+const AvailabilityFacet = ({
+  inStockOnly,
+  onToggle,
+  soldOutCount,
+  hideHeading,
+}: AvailabilityFacetProps) => {
+  const instanceId = React.useId()
+  const headingId = `facet-availability-${instanceId}`
+
+  return (
+    <section
+      aria-labelledby={hideHeading ? undefined : headingId}
+      aria-label={hideHeading ? "Availability" : undefined}
+      className="space-y-2"
+    >
+      {!hideHeading && (
+        <div className="flex items-center gap-2">
+          <PackageCheckIcon
+            className="size-4 text-muted-foreground"
+            aria-hidden="true"
+          />
+          <h3 id={headingId} className="text-sm font-medium">
+            Availability
+          </h3>
+        </div>
+      )}
+
+      <ul className="space-y-0.5">
+        <li>
+          <FacetRow
+            id={`in-stock-${instanceId}`}
+            checked={inStockOnly}
+            onToggle={() => onToggle(!inStockOnly)}
+            trailing={soldOutCount > 0 ? soldOutCount : undefined}
+          >
+            Hide sold out
+            {soldOutCount > 0 && (
+              <span className="sr-only">
+                {" "}
+                ({soldOutCount} sold out in this catalogue)
+              </span>
+            )}
+          </FacetRow>
+        </li>
+      </ul>
+    </section>
+  )
+}
 
 type FilterSidebarProps = {
   products: ShopifyProduct[]
@@ -46,49 +201,156 @@ type FilterSidebarProps = {
   onFiltersChange: (filters: Filters) => void
 }
 
-const FACET_ICONS = [
-  { title: "Vendors", icon: Building2Icon },
-  { title: "Product types", icon: PackageIcon },
-  { title: "Price", icon: DollarSignIcon },
-  { title: "Tags", icon: TagIcon },
-] as const
+type RailFacet = "vendors" | "productTypes" | "price" | "tags"
+
+const RAIL_FACETS: readonly {
+  id: RailFacet
+  title: string
+  icon: LucideIcon
+}[] = [
+  { id: "vendors", title: "Vendors", icon: Building2Icon },
+  { id: "productTypes", title: "Product types", icon: PackageIcon },
+  { id: "price", title: "Price", icon: DollarSignIcon },
+  { id: "tags", title: "Tags", icon: TagIcon },
+]
+
+type CollapsedFacetNavProps = {
+  options: FilterOptions
+  filters: Filters
+  onToggle: (facet: "vendors" | "productTypes" | "tags", value: string) => void
+  onPriceToggle: (id: PriceRangeId) => void
+  onAvailabilityToggle: (value: boolean) => void
+  soldOutCount: number
+}
 
 /**
  * Rail navigation, shown only when the sidebar is collapsed to icons.
  *
  * A 3rem rail cannot show checkbox lists, so the full facets are hidden via
- * `group-data-[collapsible=icon]:hidden` and replaced by one icon per facet.
- * Each icon carries a tooltip naming its facet, and activates by expanding the
- * sidebar so the list itself is usable rather than hiding it behind a hover.
+ * `group-data-[collapsible=icon]:hidden` and each facet becomes an icon that
+ * opens its own popover. That keeps every filter reachable while collapsed,
+ * rather than making the user expand the sidebar to change a single checkbox.
+ *
+ * A popover rather than a dialog: each of these is a short list, it needs no
+ * title or confirm action, and a modal would be heavier than the interaction
+ * warrants. Popover is also non-modal, so the rest of the rail stays reachable.
  */
-const CollapsedFacetNav = () => {
-  const { setOpen, isMobile } = useSidebar()
+const CollapsedFacetNav = ({
+  options,
+  filters,
+  onToggle,
+  onPriceToggle,
+  onAvailabilityToggle,
+  soldOutCount,
+}: CollapsedFacetNavProps) => (
+  <SidebarMenu className="hidden flex-col items-center group-data-[collapsible=icon]:flex">
+    {RAIL_FACETS.map(({ id, title, icon: Icon }) => {
+      const selectedCount =
+        id === "price" ? filters.priceRanges.length : filters[id].length
 
-  const handleExpand = () => {
-    // On mobile the sidebar is a Sheet with its own open state, and these
-    // buttons only render in the desktop rail.
-    if (isMobile) return
+      const body = (hideHeading: boolean) => {
+        switch (id) {
+          case "vendors":
+            return (
+              <FacetSection
+                hideHeading={hideHeading}
+                icon={<Icon className="size-4" />}
+                title={title}
+                options={options.vendors}
+                selected={filters.vendors}
+                onToggle={(value) => onToggle("vendors", value)}
+                searchPlaceholder="Find a vendor"
+                emptyMessage="No vendors match that search."
+              />
+            )
+          case "productTypes":
+            return (
+              <FacetSection
+                hideHeading={hideHeading}
+                icon={<Icon className="size-4" />}
+                title={title}
+                options={options.productTypes}
+                selected={filters.productTypes}
+                onToggle={(value) => onToggle("productTypes", value)}
+                searchPlaceholder="Find a type"
+                emptyMessage="No product types match that search."
+              />
+            )
+          case "price":
+            return (
+              <PriceFacet
+                hideHeading={hideHeading}
+                selected={filters.priceRanges}
+                onToggle={onPriceToggle}
+              />
+            )
+          case "tags":
+            return (
+              <FacetSection
+                hideHeading={hideHeading}
+                icon={<Icon className="size-4" />}
+                title={title}
+                options={options.tags}
+                selected={filters.tags}
+                onToggle={(value) => onToggle("tags", value)}
+                searchPlaceholder="Find a tag"
+                emptyMessage="No tags match that search."
+              />
+            )
+        }
+      }
 
-    setOpen(true)
-  }
+      return (
+        <SidebarMenuItem key={id} className="w-full">
+          <Popover>
+            <PopoverTrigger
+              render={
+                <SidebarMenuButton
+                  tooltip={title}
+                  // Centres the icon in the 3rem rail. The button is a fixed
+                  // 32px square inside a full-width list item, so without this
+                  // it sat hard against the left edge.
+                  className="mx-auto"
+                />
+              }
+            >
+              <Icon aria-hidden="true" />
+              <span>{title}</span>
+              {selectedCount > 0 && (
+                <Badge
+                  variant="secondary"
+                  className="ml-auto size-4 justify-center p-0 text-[0.625rem] tabular-nums"
+                >
+                  {selectedCount}
+                </Badge>
+              )}
+            </PopoverTrigger>
 
-  return (
-    <SidebarMenu className="hidden group-data-[collapsible=icon]:flex">
-      {FACET_ICONS.map(({ title, icon: Icon }) => (
-        <SidebarMenuItem key={title}>
-          <SidebarMenuButton
-            tooltip={title}
-            onClick={handleExpand}
-            className="justify-center"
-          >
-            <Icon aria-hidden="true" />
-            <span>{title}</span>
-          </SidebarMenuButton>
+            <PopoverContent
+              align="start"
+              side="bottom"
+              className="w-72"
+              aria-label={`${title} filters`}
+            >
+              <div className="p-1">
+                {body(false)}
+
+                <Separator className="my-3" />
+
+                <AvailabilityFacet
+                  hideHeading
+                  inStockOnly={filters.inStockOnly}
+                  onToggle={onAvailabilityToggle}
+                  soldOutCount={soldOutCount}
+                />
+              </div>
+            </PopoverContent>
+          </Popover>
         </SidebarMenuItem>
-      ))}
-    </SidebarMenu>
-  )
-}
+      )
+    })}
+  </SidebarMenu>
+)
 
 /** Rows rendered before the "Show all" control appears. */
 const PREVIEW_COUNT = 8
@@ -111,6 +373,8 @@ type FacetSectionProps = {
   onToggle: (value: string) => void
   searchPlaceholder: string
   emptyMessage: string
+  /** Hides the heading when the surrounding surface already provides one. */
+  hideHeading?: boolean
 }
 
 /**
@@ -128,11 +392,16 @@ const FacetSection = ({
   onToggle,
   searchPlaceholder,
   emptyMessage,
+  hideHeading = false,
 }: FacetSectionProps) => {
   const [query, setQuery] = React.useState("")
   const [expanded, setExpanded] = React.useState(false)
 
-  const headingId = `facet-${slugify(title)}`
+  // `useId` because this facet is rendered twice: once in the sidebar and
+  // again inside the collapsed rail's popover. A fixed id would be duplicated
+  // in the document, and `aria-labelledby` would then resolve to the wrong one.
+  const instanceId = React.useId()
+  const headingId = `facet-${slugify(title)}-${instanceId}`
 
   const term = query.trim().toLowerCase()
 
@@ -154,23 +423,29 @@ const FacetSection = ({
   if (options.length === 0) return null
 
   return (
-    <section aria-labelledby={headingId} className="space-y-2">
-      <div className="flex items-center gap-2">
-        <span className="text-muted-foreground" aria-hidden="true">
-          {icon}
-        </span>
-        <h3
-          id={headingId}
-          className="flex items-center gap-2 text-sm font-medium"
-        >
-          {title}
-          {selectedInSection > 0 && (
-            <Badge variant="secondary" className="tabular-nums">
-              {selectedInSection}
-            </Badge>
-          )}
-        </h3>
-      </div>
+    <section
+      aria-labelledby={hideHeading ? undefined : headingId}
+      aria-label={hideHeading ? title : undefined}
+      className="space-y-2"
+    >
+      {!hideHeading && (
+        <div className="flex items-center gap-2">
+          <span className="text-muted-foreground" aria-hidden="true">
+            {icon}
+          </span>
+          <h3
+            id={headingId}
+            className="flex items-center gap-2 text-sm font-medium"
+          >
+            {title}
+            {selectedInSection > 0 && (
+              <Badge variant="secondary" className="tabular-nums">
+                {selectedInSection}
+              </Badge>
+            )}
+          </h3>
+        </div>
+      )}
 
       {options.length > PREVIEW_COUNT && (
         <Input
@@ -194,6 +469,10 @@ const FacetSection = ({
               <li key={option.value}>
                 <div className="flex items-center gap-2 rounded-md px-1 py-1 hover:bg-accent has-[[data-slot=checkbox]:focus-visible]:ring-2 has-[[data-slot=checkbox]:focus-visible]:ring-ring has-[[data-slot=checkbox]:focus-visible]:ring-inset">
                   <Checkbox
+                    // See FacetRow: `nativeButton` is what makes the sibling
+                    // `<label for>` association work at all.
+                    nativeButton
+                    render={<button type="button" />}
                     id={id}
                     checked={selected.includes(option.value)}
                     onCheckedChange={() => onToggle(option.value)}
@@ -363,9 +642,26 @@ export const FilterSidebar = ({
     [filters, onFiltersChange]
   )
 
+  const handleAvailabilityToggle = React.useCallback(
+    (value: boolean) => {
+      onFiltersChange({ ...filters, inStockOnly: value })
+    },
+    [filters, onFiltersChange]
+  )
+
   const handleClear = React.useCallback(() => {
     onFiltersChange(EMPTY_FILTERS)
   }, [onFiltersChange])
+
+  // Shown on the in-stock toggle so the control explains what it hides.
+  const soldOutCount = React.useMemo(
+    () =>
+      products.reduce(
+        (total, product) => total + (isSoldOut(product) ? 1 : 0),
+        0
+      ),
+    [products]
+  )
 
   if (products.length === 0) {
     return (
@@ -402,7 +698,14 @@ export const FilterSidebar = ({
           docs recommend over a JS conditional: the sidebar's own state drives
           the visibility, so the two can never disagree.
         */}
-        <CollapsedFacetNav />
+        <CollapsedFacetNav
+          options={options}
+          filters={filters}
+          onToggle={handleToggle}
+          onPriceToggle={handlePriceToggle}
+          onAvailabilityToggle={handleAvailabilityToggle}
+          soldOutCount={soldOutCount}
+        />
 
         <ScrollArea className="flex-1 group-data-[collapsible=icon]:hidden">
           <div className="space-y-6 px-4 py-1 pb-8">
@@ -426,41 +729,16 @@ export const FilterSidebar = ({
               emptyMessage="No product types match that search."
             />
 
-            <section aria-labelledby="facet-price" className="space-y-2">
-              <div className="flex items-center gap-2">
-                <DollarSignIcon
-                  className="size-4 text-muted-foreground"
-                  aria-hidden="true"
-                />
-                <h3 id="facet-price" className="text-sm font-medium">
-                  Price
-                </h3>
-              </div>
+            <PriceFacet
+              selected={filters.priceRanges}
+              onToggle={handlePriceToggle}
+            />
 
-              <ul className="space-y-0.5">
-                {PRICE_RANGES.map((range) => {
-                  const id = `price-${range.id}`
-
-                  return (
-                    <li key={range.id}>
-                      <div className="flex items-center gap-2 rounded-md px-1 py-1 hover:bg-accent has-[[data-slot=checkbox]:focus-visible]:ring-2 has-[[data-slot=checkbox]:focus-visible]:ring-ring has-[[data-slot=checkbox]:focus-visible]:ring-inset">
-                        <Checkbox
-                          id={id}
-                          checked={filters.priceRanges.includes(range.id)}
-                          onCheckedChange={() => handlePriceToggle(range.id)}
-                        />
-                        <Label
-                          htmlFor={id}
-                          className="flex-1 cursor-pointer font-normal"
-                        >
-                          {range.label}
-                        </Label>
-                      </div>
-                    </li>
-                  )
-                })}
-              </ul>
-            </section>
+            <AvailabilityFacet
+              inStockOnly={filters.inStockOnly}
+              onToggle={handleAvailabilityToggle}
+              soldOutCount={soldOutCount}
+            />
 
             <FacetSection
               icon={<TagIcon className="size-4" />}

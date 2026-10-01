@@ -12,6 +12,13 @@ export type ShopifyVariant = {
   price: string
   sku: string | null
   compare_at_price: string | null
+  /**
+   * Whether the variant can currently be bought.
+   *
+   * Present on the public `/products.json` payload, which is the only
+   * availability signal available without an authenticated Admin API call.
+   */
+  available: boolean
 }
 
 export type ShopifyProduct = {
@@ -42,6 +49,29 @@ export const parseTags = (tags: unknown): string[] => {
 }
 
 /**
+ * Whether any variant can currently be bought.
+ *
+ * A product is only purchasable if at least one of its variants is available.
+ * Merely having a price is not enough: sold-out products keep their real price
+ * in the payload, so price cannot be used as a proxy for availability.
+ */
+export const isInStock = (product: ShopifyProduct): boolean =>
+  product.variants.some((variant) => variant.available)
+
+export const isSoldOut = (product: ShopifyProduct): boolean =>
+  !isInStock(product)
+
+/**
+ * Whether the product is available at no cost.
+ *
+ * Distinct from sold out, and worth distinguishing: a genuinely free product
+ * showing "$0.00" reads as a bug, but showing "Free" does not. Zero-priced and
+ * unavailable together mean sold out, which `isSoldOut` already catches.
+ */
+export const isFree = (product: ShopifyProduct): boolean =>
+  isInStock(product) && getLowestVariantPrice(product.variants) === 0
+
+/**
  * The lowest variant price, used for filtering and display. Falls back to the
  * highest variant so a product with only `compare_at_price` data still shows a
  * number rather than nothing.
@@ -64,13 +94,15 @@ export const getPrimaryVariant = (
 ): ShopifyVariant | null => {
   if (!variants.length) return null
 
-  const lowest = getLowestVariantPrice(variants)
+  const purchasable = variants.filter((variant) => variant.available)
+  const candidates = purchasable.length ? purchasable : variants
+  const lowest = getLowestVariantPrice(candidates)
 
-  if (lowest === null) return variants[0]
+  if (lowest === null) return candidates[0]
 
   return (
-    variants.find((variant) => Number.parseFloat(variant.price) === lowest) ??
-    variants[0]
+    candidates.find((variant) => Number.parseFloat(variant.price) === lowest) ??
+    candidates[0]
   )
 }
 
@@ -174,6 +206,9 @@ export const normalizeProduct = (raw: unknown): ShopifyProduct | null => {
             typeof variant.compare_at_price === "string"
               ? variant.compare_at_price
               : null,
+          // Absent on some older themes; treat an unknown variant as available
+          // so a store that omits the flag does not appear fully sold out.
+          available: variant.available !== false,
         }))
     : []
 

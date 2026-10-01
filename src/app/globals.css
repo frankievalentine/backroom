@@ -43,6 +43,7 @@
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
+  --color-price: var(--price);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -92,6 +93,16 @@
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
+  /*
+    Product price. Green is an e-commerce convention rather than a semantic
+    signal here, so it is deliberately NOT reused for "in stock": sold-out
+    state uses muted text instead. One hue, one meaning.
+
+    No single lightness clears 4.5:1 against both the white card and the dark
+    card, so this is defined per theme rather than averaged. Light 0.52 gives
+    5.19:1 on white and 4.76:1 on --muted.
+  */
+  --price: oklch(0.52 0.13 150);
 
   /* Dividers and card edges. Decorative, so they stay soft. */
   --border: oklch(0.88 0 0);
@@ -151,6 +162,8 @@
   --accent: oklch(0.269 0 0);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
+    /* Dark counterpart: 5.90:1 on --card, 4.98:1 on --muted. */
+    --price: oklch(0.65 0.15 150);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
