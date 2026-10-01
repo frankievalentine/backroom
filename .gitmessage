@@ -1,0 +1,34 @@
+# Conventional Commits. Subject line:
+
+#   <type>(<optional scope>): <imperative summary in the imperative mood>
+#
+# Types:
+#   feat      a new capability the user can see
+#   fix       a bug fix
+#   refactor  behaviour unchanged, structure changed
+#   perf      a change made for speed or memory
+#   docs      documentation only
+#   chore     tooling, deps, config, housekeeping
+#   test      adding or correcting tests
+#
+# Scopes used in this repo:
+#   project   package identity, tooling, config
+#   deps      dependency changes
+#   ui        components and layout
+#   a11y      accessibility, including contrast and keyboard
+#   brand     name, copy, metadata
+#   api       the scrape endpoint and the data layer
+#   home      the home page
+#
+# Rules:
+#   - subject under 72 characters, no trailing period
+#   - explain WHY in the body, not WHAT the diff already shows
+#   - note anything that surprised you, cost you time, or that you verified
+#   - add a Co-Authored-By trailer for agent-authored commits
+#
+# Examples:
+#   fix(a11y): restore checkbox and label association
+#   feat(home): add FAQ accordion
+#   chore(deps): swap ESLint for Biome, which supports TypeScript 7
+
+type(scope): summary

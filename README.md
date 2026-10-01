@@ -3,6 +3,23 @@
 *A storefront explorer.* Paste a Shopify storefront URL and browse its full
 product catalog. Filter by vendor, product type, tag and price.
 
+## Committing
+
+This repo uses [Conventional Commits](https://www.conventionalcommits.org):
+`<type>(<scope>): <imperative summary>`, for example
+`fix(a11y): restore checkbox and label association`.
+
+`.gitmessage` holds the types, the scopes used here, and the house rules. Point
+git at it once:
+
+```bash
+git config commit.template .gitmessage
+```
+
+The convention is advisory, not enforced — no hooks. Keep the subject under 72
+characters, and spend the body on **why** rather than what the diff already
+shows.
+
 ## Getting started
 
 ```bash
