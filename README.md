@@ -151,8 +151,8 @@ Two things the component does not handle, applied at the call site in
   gradient every frame, so it is switched off entirely under
   `prefers-reduced-motion` rather than slowed down.
 
-`variant="white"` is used instead of the default four-hue rainbow, because this
-interface runs on a single neutral ramp plus one green accent.
+It uses the component's default four-hue gradient. `variant="white"` gives a
+monochrome version of the same effect if the colour ever needs toning down.
 
 ### Configuration files
 

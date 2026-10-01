@@ -43,15 +43,17 @@ export const FeaturedCard = ({
            precisely the continuous motion the preference asks us not to show,
            so the effect is skipped rather than merely slowed.
 
-        `variant="white"` because the default is a four-hue rainbow
-        (#dd7bbb/#d79f1e/#5a922c/#4c7894). This interface is built on a single
-        neutral ramp plus one green accent; a rainbow on every card would put
-        four competing hues on screen and collide with the price token's green.
+        The four-hue default is deliberate. An earlier version passed
+        `variant="white"` on the grounds that the rainbow would fight the design
+        system -- that reasoning was partly wrong, since these cards are on the
+        home page and never share a viewport with the green `--price` token on
+        the scraper's product cards. The rainbow is confined to a 1.5px moving
+        border on hover, so it reads as one surface treatment rather than as
+        four competing brand colours.
       */}
       <GlowingEffect
         disabled={reducedMotion}
         glow
-        variant="white"
         spread={42}
         proximity={64}
         inactiveZone={0}
