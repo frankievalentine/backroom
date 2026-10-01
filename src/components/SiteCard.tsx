@@ -58,7 +58,7 @@ export const SiteCard = ({ site, featured = false }: SiteCardProps) => (
     {featured && (
       <span
         aria-hidden="true"
-        className="hidden size-8 shrink-0 place-items-center rounded-md text-muted-foreground transition-transform group-hover/card:translate-x-0.5 sm:grid"
+        className="hidden size-8 shrink-0 place-items-center rounded-md text-muted-foreground transition-transform motion-reduce:transition-none group-hover/card:translate-x-0.5 motion-reduce:group-hover/card:translate-x-0 sm:grid"
       >
         <ArrowRightIcon className="size-4" />
       </span>

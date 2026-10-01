@@ -1,12 +1,12 @@
 "use client"
 
 import { AlertCircleIcon, SearchIcon, XIcon } from "lucide-react"
-import { useSearchParams } from "next/navigation"
 import * as React from "react"
 import { FilterSidebar } from "@/components/FilterSidebar"
 import { ProductGridSkeleton, ProductList } from "@/components/ProductList"
 import { SiteHeader } from "@/components/SiteHeader"
 import { SitePicker } from "@/components/SitePicker"
+import { SkipLink } from "@/components/SkipLink"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import {
@@ -31,10 +31,17 @@ import type { ShopifyProduct } from "@/lib/shopify"
 /** Products rendered per page. Keeps a large store from mounting 5,000 cards. */
 const PAGE_SIZE = 60
 
-export const ScraperClient = () => {
+/** Shared by the skip link and the landmark it targets. */
+const MAIN_CONTENT_ID = "main-content"
+
+type ScraperClientProps = {
+  /** `?domain=` read on the server, so the route can still server-render. */
+  initialDomain?: string
+}
+
+export const ScraperClient = ({ initialDomain }: ScraperClientProps) => {
   const { sites, addSite, removeSite } = useSavedSites()
   const scrape = useStoreScrape()
-  const searchParams = useSearchParams()
 
   const [filters, setFilters] = React.useState(EMPTY_FILTERS)
   const [query, setQuery] = React.useState("")
@@ -42,16 +49,15 @@ export const ScraperClient = () => {
 
   const { domain, products, status, error, truncated, load } = scrape
 
-  // A `?domain=` link from the home page loads that store on arrival. Keyed on
-  // the raw param so a user can paste a different domain into the URL and have
-  // it picked up, and refetched only when the value actually changes.
-  const requestedDomain = searchParams.get("domain")
-
+  // A `?domain=` link from the home page loads that store on arrival. The param
+  // is read on the server and handed in as a prop; the effect is keyed on the
+  // raw value so editing the URL picks up a different store, and refetches only
+  // when the value actually changes.
   React.useEffect(() => {
-    if (!requestedDomain) return
+    if (!initialDomain) return
 
-    void load(requestedDomain)
-  }, [requestedDomain, load])
+    void load(initialDomain)
+  }, [initialDomain, load])
 
   const visibleProducts = React.useMemo<ShopifyProduct[]>(() => {
     const searched = searchProducts(products, query)
@@ -128,14 +134,30 @@ export const ScraperClient = () => {
 
   return (
     <SidebarProvider>
+      {/*
+        One `<h1>` per route, always present and always first in DOM order, so a
+        reader navigating by heading meets the page title before the sidebar's
+        `<h2>Filters</h2>`. It is visually hidden because the meaningful visible
+        title changes with state (loaded domain, error, empty), and swapping a
+        visible heading on every transition would be worse for orientation than a
+        stable one. `sr-only` positions it absolutely, so it takes no space in
+        the sidebar's flex layout.
+      */}
+      <h1 className="sr-only">
+        {domain
+          ? `Product catalogue for ${domain}`
+          : "Shopify product catalogue scraper"}
+      </h1>
+
       <FilterSidebar
         products={products}
         filters={filters}
         onFiltersChange={setFilters}
       />
 
-      <SidebarInset>
+      <SidebarInset id={MAIN_CONTENT_ID}>
         <div className="flex min-h-svh flex-col">
+          <SkipLink targetId={MAIN_CONTENT_ID} />
           <SiteHeader parent={domain ?? undefined} />
 
           <div className="border-b bg-background">
@@ -158,7 +180,12 @@ export const ScraperClient = () => {
             </div>
           </div>
 
-          <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6">
+          {/*
+              A `<div>`, not a `<main>`: SidebarInset above is already the page's
+              single main landmark, and nesting a second one leaves assistive tech
+              with nothing to treat as the page body.
+            */}
+          <div className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6">
             {error && status === "error" && (
               <Alert variant="destructive" className="mb-6">
                 <AlertCircleIcon aria-hidden="true" />
@@ -317,7 +344,7 @@ export const ScraperClient = () => {
                 </EmptyHeader>
               </Empty>
             )}
-          </main>
+          </div>
         </div>
       </SidebarInset>
     </SidebarProvider>

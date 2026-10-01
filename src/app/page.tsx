@@ -4,6 +4,7 @@ import Link from "next/link"
 import { FeaturedCard } from "@/components/FeaturedCard"
 import { SiteCard } from "@/components/SiteCard"
 import { SiteHeader } from "@/components/SiteHeader"
+import { SkipLink } from "@/components/SkipLink"
 import { buttonVariants } from "@/components/ui/button"
 import { getHeroPlacement, getSupportingPlacements } from "@/lib/featured"
 import { getPopularSites } from "@/lib/popular-sites"
@@ -33,15 +34,26 @@ const VALUE_PROPS = [
   },
 ]
 
+/**
+ * Section heading plus its description.
+ *
+ * `id` is required and applied to the `<h2>`, because callers name their
+ * `<section>` with `aria-labelledby`. Without a matching id the reference
+ * resolves to nothing and the section ends up with no accessible name at all.
+ */
 const SectionHeading = ({
+  id,
   title,
   description,
 }: {
+  id: string
   title: string
   description: string
 }) => (
   <div className="mb-6 space-y-1">
-    <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
+    <h2 id={id} className="text-lg font-semibold tracking-tight">
+      {title}
+    </h2>
     <p className="max-w-prose text-sm text-pretty text-muted-foreground">
       {description}
     </p>
@@ -55,9 +67,10 @@ export default function HomePage() {
 
   return (
     <div className="flex min-h-svh flex-col">
+      <SkipLink />
       <SiteHeader />
 
-      <main className="flex-1">
+      <main id="main-content" className="flex-1">
         {/*
           Hero. Every section below sits in the same max-width container so the
           left edge never jumps between sections.
@@ -101,7 +114,18 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6">
+        {/*
+          Value props. These are `<h2>` rather than `<h3>`: they sit directly
+          under the page `<h1>` with no intervening `<h2>`, so heading them h3
+          would skip a level in the outline.
+        */}
+        <section
+          aria-labelledby="why-heading"
+          className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6"
+        >
+          <h2 id="why-heading" className="sr-only">
+            Why use this
+          </h2>
           <ul className="grid gap-6 sm:grid-cols-3">
             {VALUE_PROPS.map((item) => (
               <li key={item.title} className="space-y-2">
@@ -131,8 +155,9 @@ export default function HomePage() {
           >
             <div className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6">
               <SectionHeading
+                id="featured-heading"
                 title="Featured stores"
-                description="Stores worth pointing a new user at. Sponsored placements are labelled as such."
+                description="Stores worth pointing a new user at. A placement only reads as sponsored once a live deal is running."
               />
 
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -151,6 +176,7 @@ export default function HomePage() {
           className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6"
         >
           <SectionHeading
+            id="popular-heading"
             title="Popular Shopify stores"
             description="A ranked shortlist of well-known storefronts, handy if you want to see how a large catalogue is structured before pointing the scraper at your own."
           />

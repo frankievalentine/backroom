@@ -39,6 +39,16 @@ type FilterSidebarProps = {
 /** Rows rendered before the "Show all" control appears. */
 const PREVIEW_COUNT = 8
 
+/**
+ * Turn a facet title into an id fragment.
+ *
+ * Titles are human strings ("Product types"), and an id may not contain
+ * whitespace. Slugging once and reusing the result keeps the `<section>`,
+ * its `<h3>` and every checkbox label pointing at the same valid id.
+ */
+const slugify = (value: string): string =>
+  value.toLowerCase().replace(/\s+/g, "-")
+
 type FacetSectionProps = {
   icon: React.ReactNode
   title: string
@@ -68,6 +78,8 @@ const FacetSection = ({
   const [query, setQuery] = React.useState("")
   const [expanded, setExpanded] = React.useState(false)
 
+  const headingId = `facet-${slugify(title)}`
+
   const term = query.trim().toLowerCase()
 
   const visible = React.useMemo(() => {
@@ -88,13 +100,13 @@ const FacetSection = ({
   if (options.length === 0) return null
 
   return (
-    <section aria-labelledby={`facet-${title}`} className="space-y-2">
+    <section aria-labelledby={headingId} className="space-y-2">
       <div className="flex items-center gap-2">
         <span className="text-muted-foreground" aria-hidden="true">
           {icon}
         </span>
         <h3
-          id={`facet-${title}`}
+          id={headingId}
           className="flex items-center gap-2 text-sm font-medium"
         >
           {title}
@@ -122,7 +134,7 @@ const FacetSection = ({
       ) : (
         <ul className="space-y-0.5">
           {shown.map((option) => {
-            const id = `${title.toLowerCase().replace(/\s+/g, "-")}-${option.value}`
+            const id = `${slugify(title)}-${option.value}`
 
             return (
               <li key={option.value}>

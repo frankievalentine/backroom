@@ -46,7 +46,7 @@ export const FEATURED_PLACEMENTS: readonly FeaturedPlacement[] = [
     name: "Taylor Stitch",
     headline: "Deep catalogue, richly tagged",
     description:
-      "Two thousand products where vendor and type facets overlap heavily, which is a good stress test for filtering.",
+      "Nearly four thousand products where vendor and type facets overlap heavily, which makes it a good stress test for filtering.",
   },
   {
     id: "sponsored-nixon",
@@ -66,7 +66,7 @@ export const FEATURED_PLACEMENTS: readonly FeaturedPlacement[] = [
     name: "Cuyana",
     headline: "Small catalogue, high signal",
     description:
-      "Roughly nine hundred products with consistent tags and imagery, which makes it a reliable end-to-end smoke test.",
+      "Around nine hundred products with consistent tags and imagery, which makes it a reliable end-to-end smoke test.",
   },
   {
     id: "sponsored-away",

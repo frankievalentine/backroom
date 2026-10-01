@@ -172,7 +172,7 @@ const ProductCard = ({
       {href && (
         <ExternalLinkIcon
           aria-hidden="true"
-          className="absolute top-2 right-2 size-3.5 text-muted-foreground opacity-0 transition-opacity group-hover/card:opacity-100 group-focus-within/card:opacity-100"
+          className="absolute top-2 right-2 size-3.5 text-muted-foreground opacity-0 transition-opacity motion-reduce:transition-none group-hover/card:opacity-100 group-focus-within/card:opacity-100"
         />
       )}
     </Card>

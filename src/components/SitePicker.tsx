@@ -132,7 +132,10 @@ export const SitePicker = ({
               aria-label="Scrape this store"
             >
               {isLoading ? (
-                <Loader2Icon className="animate-spin" aria-hidden="true" />
+                <Loader2Icon
+                  className="animate-spin motion-reduce:animate-none"
+                  aria-hidden="true"
+                />
               ) : (
                 <PlusIcon aria-hidden="true" />
               )}

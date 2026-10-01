@@ -65,14 +65,32 @@
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
+  /*
+    Darkened from shadcn's neutral 0.556. At 0.556 this token renders 4.34:1 on
+    --muted, just under the 4.5:1 required for body text; muted surfaces are
+    common (card footers, inset panels), so the token has to clear 4.5 against
+    both --background and --muted.
+  */
+  --muted-foreground: oklch(0.52 0 0);
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
 
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  /* Dividers and card edges. Decorative, so they stay soft. */
+  --border: oklch(0.88 0 0);
+  /*
+    Input boundaries are informational rather than decorative, so they carry the
+    3:1 WCAG 1.4.11 asks for. 0.65 lands just above it (~3.2:1 on white).
+    Keeping this token separate from --border is deliberate: firmer field edges
+    and quiet dividers is the right hierarchy anyway.
+  */
+  --input: oklch(0.65 0 0);
+  /*
+    Focus ring. shadcn's neutral 0.708 renders 2.59:1 against white and fails
+    the 3:1 that WCAG 2.4.11 requires of a focus indicator; 0.60 clears it at
+    ~3.9:1 without the heaviness of a near-black ring.
+  */
+  --ring: oklch(0.6 0 0);
 
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
@@ -86,8 +104,8 @@
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-accent: oklch(0.97 0 0);
   --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar-border: oklch(0.88 0 0);
+  --sidebar-ring: oklch(0.6 0 0);
 }
 
 .dark {
