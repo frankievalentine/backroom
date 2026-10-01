@@ -3,6 +3,7 @@ import Link from "next/link"
 
 import { GlowingEffect } from "@/components/ui/glowing-effect"
 import { usePrefersReducedMotion } from "@/hooks/use-prefers-reduced-motion"
+import { TOOL_ROUTE } from "@/lib/brand"
 import type { FeaturedPlacement } from "@/lib/featured"
 
 /**
@@ -47,7 +48,7 @@ export const FeaturedCard = ({
         `variant="white"` on the grounds that the rainbow would fight the design
         system -- that reasoning was partly wrong, since these cards are on the
         home page and never share a viewport with the green `--price` token on
-        the scraper's product cards. The rainbow is confined to a 1.5px moving
+        the catalogue's product cards. The rainbow is confined to a 1.5px moving
         border on hover, so it reads as one surface treatment rather than as
         four competing brand colours.
       */}
@@ -62,7 +63,7 @@ export const FeaturedCard = ({
       />
 
       <Link
-        href={`/scraper?domain=${encodeURIComponent(placement.domain)}`}
+        href={`${TOOL_ROUTE}?domain=${encodeURIComponent(placement.domain)}`}
         className="flex flex-1 flex-col rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
       >
         <span className="flex items-center gap-2">
@@ -106,7 +107,7 @@ export const FeaturedCard = ({
         </span>
 
         <span className="sr-only">
-          : open {placement.domain} in the scraper
+          : open {placement.domain} in the catalogue
         </span>
       </Link>
     </div>

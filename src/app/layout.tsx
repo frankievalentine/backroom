@@ -1,7 +1,9 @@
 import type { Metadata } from "next"
-
 import { Geist, Geist_Mono } from "next/font/google"
+
 import { TooltipProvider } from "@/components/ui/tooltip"
+
+import { BRAND_NAME, BRAND_TAGLINE } from "@/lib/brand"
 
 import "./globals.css"
 
@@ -17,11 +19,10 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Product Scraper",
-    template: "%s · Product Scraper",
+    default: BRAND_NAME,
+    template: `%s · ${BRAND_NAME}`,
   },
-  description:
-    "Paste a Shopify storefront URL and browse its full product catalogue. Filter by vendor, type, tag and price.",
+  description: BRAND_TAGLINE,
 }
 
 export default function RootLayout({

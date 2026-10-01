@@ -1,6 +1,7 @@
 import { ArrowRightIcon } from "lucide-react"
 import Link from "next/link"
 
+import { TOOL_ROUTE } from "@/lib/brand"
 import { formatCatalogueSize, type PopularSite } from "@/lib/popular-sites"
 
 /**
@@ -16,7 +17,7 @@ import { formatCatalogueSize, type PopularSite } from "@/lib/popular-sites"
 export const SiteCard = ({ site }: { site: PopularSite }) => (
   <li className="group/tile relative flex h-full flex-col rounded-xl border bg-card p-4 transition-colors hover:border-foreground/25 focus-within:border-ring">
     <Link
-      href={`/scraper?domain=${encodeURIComponent(site.domain)}`}
+      href={`${TOOL_ROUTE}?domain=${encodeURIComponent(site.domain)}`}
       className="flex flex-1 flex-col rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
     >
       <span className="flex items-baseline justify-between gap-2">
@@ -43,7 +44,7 @@ export const SiteCard = ({ site }: { site: PopularSite }) => (
       </span>
 
       <span className="sr-only">
-        , open {site.category.toLowerCase()} from {site.domain} in the scraper
+        , open {site.category.toLowerCase()} from {site.domain} in the catalogue
       </span>
     </Link>
   </li>

@@ -73,12 +73,12 @@ const usePersistedSidebar = () => {
 /** Shared by the skip link and the landmark it targets. */
 const MAIN_CONTENT_ID = "main-content"
 
-type ScraperClientProps = {
+type CatalogueViewerProps = {
   /** `?domain=` read on the server, so the route can still server-render. */
   initialDomain?: string
 }
 
-export const ScraperClient = ({ initialDomain }: ScraperClientProps) => {
+export const CatalogueViewer = ({ initialDomain }: CatalogueViewerProps) => {
   const { sites, addSite, removeSite } = useSavedSites()
   const scrape = useStoreScrape()
   const { open: sidebarOpen, handleOpenChange: handleSidebarOpenChange } =
@@ -198,7 +198,7 @@ export const ScraperClient = ({ initialDomain }: ScraperClientProps) => {
       <h1 className="sr-only">
         {domain
           ? `Product catalogue for ${domain}`
-          : "Shopify product catalogue scraper"}
+          : "Shopify product catalogue viewer"}
       </h1>
 
       <FilterSidebar

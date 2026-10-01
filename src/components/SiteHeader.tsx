@@ -1,21 +1,22 @@
 import Link from "next/link"
 
 import { buttonVariants } from "@/components/ui/button"
+import { BRAND_INITIALS, BRAND_NAME } from "@/lib/brand"
 import { cn } from "@/lib/utils"
 
 type SiteHeaderProps = {
   /** Route context shown next to the wordmark, e.g. the loaded domain. */
   parent?: string
   /**
-   * Set on the scraper route.
+   * Set on the catalogue route.
    *
-   * The "Open scraper" call to action is suppressed here, because it would link
-   * the scraper page to itself. This has to be an explicit signal rather than
-   * inferred from `parent`: with no store loaded there is no parent either, and
-   * inferring from that left the self-link showing on exactly the page it should
-   * never appear on.
+   * The call to action into the tool is suppressed there, because it would link
+   * the page to itself. This has to be an explicit signal rather than inferred
+   * from `parent`: with no store loaded there is no parent either, and inferring
+   * from that left the self-link showing on exactly the page it should never
+   * appear on.
    */
-  hideScraperLink?: boolean
+  hideToolLink?: boolean
   /** Right-hand slot. Overrides the default call to action entirely. */
   children?: React.ReactNode
   className?: string
@@ -30,11 +31,11 @@ type SiteHeaderProps = {
  */
 export const SiteHeader = ({
   parent,
-  hideScraperLink = false,
+  hideToolLink = false,
   children,
   className,
 }: SiteHeaderProps) => {
-  const showDefaultAction = children === undefined && !hideScraperLink
+  const showDefaultAction = children === undefined && !hideToolLink
 
   return (
     <header
@@ -53,10 +54,10 @@ export const SiteHeader = ({
               aria-hidden="true"
               className="grid size-6 place-items-center rounded-md bg-primary text-[0.625rem] font-bold text-primary-foreground"
             >
-              PS
+              {BRAND_INITIALS}
             </span>
-            <span className="hidden sm:inline">Product Scraper</span>
-            <span className="sm:hidden">PS</span>
+            <span className="hidden sm:inline">{BRAND_NAME}</span>
+            <span className="sm:hidden">{BRAND_INITIALS}</span>
             <span className="sr-only">, home</span>
           </Link>
 
@@ -76,12 +77,12 @@ export const SiteHeader = ({
           {children ??
             (showDefaultAction ? (
               <Link
-                href="/scraper"
+                href="/backroom"
                 className={cn(
                   buttonVariants({ variant: "outline", size: "sm" })
                 )}
               >
-                Open scraper
+                Open catalogue
               </Link>
             ) : null)}
         </div>

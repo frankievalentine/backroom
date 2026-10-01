@@ -2,7 +2,7 @@
 
 import * as React from "react"
 
-const STORAGE_KEY = "product-scraper:saved-sites"
+const STORAGE_KEY = "backroom:saved-sites"
 
 export type SavedSite = {
   domain: string

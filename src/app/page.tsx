@@ -13,13 +13,14 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion"
 import { buttonVariants } from "@/components/ui/button"
+import { BRAND_DESCRIPTOR, BRAND_NAME, TOOL_ROUTE } from "@/lib/brand"
 import { FAQ_ENTRIES } from "@/lib/faq"
 import { getHeroPlacement, getSupportingPlacements } from "@/lib/featured"
 import { getPopularSites } from "@/lib/popular-sites"
 import { cn } from "@/lib/utils"
 
 export const metadata: Metadata = {
-  title: "Product Scraper",
+  title: BRAND_NAME,
   description:
     "Paste a Shopify storefront URL and browse its full product catalogue. Filter by vendor, type, tag and price.",
 }
@@ -111,16 +112,16 @@ export default function HomePage() {
 
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <Link
-                href="/scraper"
+                href={TOOL_ROUTE}
                 className={cn(buttonVariants({ size: "lg" }), "gap-1.5")}
               >
-                Open the scraper
+                Open the catalogue
                 <ArrowRightIcon aria-hidden="true" />
               </Link>
 
               {leadSite && (
                 <Link
-                  href={`/scraper?domain=${encodeURIComponent(leadSite.domain)}`}
+                  href={`${TOOL_ROUTE}?domain=${encodeURIComponent(leadSite.domain)}`}
                   className={cn(
                     buttonVariants({ variant: "outline", size: "lg" })
                   )}
@@ -247,14 +248,14 @@ export default function HomePage() {
       <footer className={cn("mx-auto w-full px-5 py-10 sm:px-8", PAGE_WIDTH)}>
         <div className="flex flex-col gap-2 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
           <p>
-            Product Scraper. Not affiliated with Shopify. Store data belongs to
-            its owners.
+            {BRAND_NAME} — {BRAND_DESCRIPTOR}. Not affiliated with Shopify.
+            Store data belongs to its owners.
           </p>
           <Link
-            href="/scraper"
+            href={TOOL_ROUTE}
             className="underline underline-offset-4 hover:text-foreground"
           >
-            Open the scraper
+            Open the catalogue
           </Link>
         </div>
       </footer>

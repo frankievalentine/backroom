@@ -12,7 +12,7 @@
  *
  * `products` was measured on VERIFIED_ON by running this app's own scrape
  * against each store, so the numbers match what a user will actually see.
- * Stores marked `productsAreFloor` hit the scraper's 5,000-product pagination
+ * Stores marked `productsAreFloor` hit the scraper's 5,000-product pagination cap
  * cap, so their real catalogue is larger than the number shown. Counts drift;
  * re-run before trusting them, and drop any store that stops serving
  * products.json.
@@ -20,7 +20,7 @@
 export const VERIFIED_ON = "2026-10-01"
 
 export type PopularSite = {
-  /** Canonical hostname, exactly as the scraper stores it. */
+  /** Canonical hostname, exactly as the scraper normalises and stores it. */
   domain: string
   name: string
   /** What the store sells, one short phrase. */

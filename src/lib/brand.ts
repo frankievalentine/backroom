@@ -1,0 +1,31 @@
+/**
+ * Brand constants.
+ *
+ * The product has a brand name and a descriptor, and they do different jobs.
+ * "Backroom" is the identity; "a storefront explorer" says what it does. Keeping
+ * them here rather than inline means the wordmark, page titles, the compact
+ * sidebar badge and the footer cannot drift apart.
+ *
+ * The previous name was "Product Scraper", which oversold the tool: it
+ * promised extraction, and there is no export. The catalogue is the thing being
+ * shown, which is what the name now says.
+ */
+
+/** Full product name. Used in the wordmark and page titles. */
+export const BRAND_NAME = "Backroom"
+
+/** Short form for tight spaces where the full name will not fit. */
+export const BRAND_SHORT = "Backroom"
+
+/** Initials for the square badge. Two characters, uppercase. */
+export const BRAND_INITIALS = "BR"
+
+/** One-line description of what the product is. */
+export const BRAND_DESCRIPTOR = "A storefront explorer"
+
+/** Longer form for metadata and the footer. */
+export const BRAND_TAGLINE =
+  "Browse any Shopify store's full product catalogue. Filter by vendor, type, tag and price."
+
+/** The tool route. Was `/scraper`; `/scraper` redirects here. */
+export const TOOL_ROUTE = "/backroom"

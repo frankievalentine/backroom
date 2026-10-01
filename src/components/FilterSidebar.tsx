@@ -33,6 +33,7 @@ import {
   SidebarMenuItem,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
+import { BRAND_INITIALS, BRAND_NAME } from "@/lib/brand"
 import {
   buildFilterOptions,
   countActiveFilters,
@@ -524,10 +525,10 @@ const SidebarWordmark = () => (
       aria-hidden="true"
       className="grid size-6 shrink-0 place-items-center rounded-md bg-primary text-[0.625rem] font-bold text-primary-foreground"
     >
-      PS
+      {BRAND_INITIALS}
     </span>
     <span className="truncate group-data-[collapsible=icon]:sr-only">
-      Product Scraper
+      {BRAND_NAME}
     </span>
   </Link>
 )

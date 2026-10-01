@@ -1,10 +1,10 @@
 import type { Metadata } from "next"
 import { Suspense } from "react"
-import { ScraperClient } from "@/app/scraper/scraper-client"
+import { CatalogueViewer } from "@/app/backroom/backroom-client"
 import { Skeleton } from "@/components/ui/skeleton"
 
 export const metadata: Metadata = {
-  title: "Scraper",
+  title: "Browse stores",
   description:
     "Paste a Shopify storefront URL and browse its full product catalogue.",
 }
@@ -14,10 +14,10 @@ const WorkspaceFallback = () => (
     role="status"
     aria-busy="true"
     aria-live="polite"
-    aria-label="Loading the scraper"
-    className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6"
+    aria-label="Loading the catalogue viewer"
+    className="mx-auto w-full max-w-7xl px-5 py-6 sm:px-8"
   >
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {Array.from({ length: 8 }, (_, index) => (
         <div key={index} className="space-y-3">
           <Skeleton className="aspect-square w-full" />
@@ -38,7 +38,7 @@ const WorkspaceFallback = () => (
  * client instead would push the entire page behind a Suspense boundary, and a
  * reader arriving without JavaScript would get nothing but skeletons.
  */
-export default async function ScraperPage({
+export default async function BackroomPage({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>
@@ -51,7 +51,7 @@ export default async function ScraperPage({
 
   return (
     <Suspense fallback={<WorkspaceFallback />}>
-      <ScraperClient initialDomain={initialDomain} />
+      <CatalogueViewer initialDomain={initialDomain} />
     </Suspense>
   )
 }

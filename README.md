@@ -1,7 +1,7 @@
-# product-scraper
+# Backroom
 
-Paste a Shopify storefront URL and browse its full product catalogue. Filter by
-vendor, product type, tag and price.
+*A storefront explorer.* Paste a Shopify storefront URL and browse its full
+product catalogue. Filter by vendor, product type, tag and price.
 
 ## Getting started
 
@@ -55,7 +55,8 @@ correct tool here.
 | Route | Description |
 | --- | --- |
 | `/` | Home page: ranked popular stores plus featured and sponsored placements |
-| `/scraper` | The tool. Accepts `?domain=<host>` and loads it on arrival |
+| `/backroom` | The tool. Accepts `?domain=<host>` and loads it on arrival |
+| `/scraper` | 308-redirects to `/backroom`, carrying any query string |
 | `POST /api/scrape` | Fetches and normalises a store's catalogue |
 
 ### Data flow
