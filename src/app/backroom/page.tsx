@@ -1,12 +1,12 @@
 import type { Metadata } from "next"
 import { Suspense } from "react"
-import { CatalogueViewer } from "@/app/backroom/backroom-client"
+import { CatalogViewer } from "@/app/backroom/backroom-client"
 import { Skeleton } from "@/components/ui/skeleton"
 
 export const metadata: Metadata = {
   title: "Browse stores",
   description:
-    "Paste a Shopify storefront URL and browse its full product catalogue.",
+    "Paste a Shopify storefront URL and browse its full product catalog.",
 }
 
 const WorkspaceFallback = () => (
@@ -14,7 +14,7 @@ const WorkspaceFallback = () => (
     role="status"
     aria-busy="true"
     aria-live="polite"
-    aria-label="Loading the catalogue viewer"
+    aria-label="Loading the catalog viewer"
     className="mx-auto w-full max-w-7xl px-5 py-6 sm:px-8"
   >
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -51,7 +51,7 @@ export default async function BackroomPage({
 
   return (
     <Suspense fallback={<WorkspaceFallback />}>
-      <CatalogueViewer initialDomain={initialDomain} />
+      <CatalogViewer initialDomain={initialDomain} />
     </Suspense>
   )
 }

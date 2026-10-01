@@ -2,7 +2,7 @@ import { ArrowRightIcon } from "lucide-react"
 import Link from "next/link"
 
 import { TOOL_ROUTE } from "@/lib/brand"
-import { formatCatalogueSize, type PopularSite } from "@/lib/popular-sites"
+import { formatCatalogSize, type PopularSite } from "@/lib/popular-sites"
 
 /**
  * A ranked store tile.
@@ -39,12 +39,12 @@ export const SiteCard = ({ site }: { site: PopularSite }) => (
           {site.domain}
         </span>
         <span className="shrink-0 tabular-nums text-muted-foreground">
-          {formatCatalogueSize(site)}
+          {formatCatalogSize(site)}
         </span>
       </span>
 
       <span className="sr-only">
-        , open {site.category.toLowerCase()} from {site.domain} in the catalogue
+        , open {site.category.toLowerCase()} from {site.domain} in the catalog
       </span>
     </Link>
   </li>

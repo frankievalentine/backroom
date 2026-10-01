@@ -27,7 +27,7 @@ export type Filters = {
   /**
    * Hide products where no variant is currently available.
    *
-   * Off by default. Sold-out items are still real catalogue entries and some
+   * Off by default. Sold-out items are still real catalog entries and some
    * shoppers browse for them, but they should be opt-out rather than opt-in.
    */
   inStockOnly: boolean

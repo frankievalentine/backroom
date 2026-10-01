@@ -35,7 +35,7 @@ export const FAQ_ENTRIES: readonly FaqEntry[] = [
     id: "large-stores",
     question: "What happens with a store that has thousands of products?",
     answer:
-      "We walk the paginated catalogue rather than stopping at the first page. If a store is large enough to hit our 5,000-product ceiling we say so on screen and mark the count as a lower bound, rather than quietly showing you a partial catalogue that looks complete.",
+      "We walk the paginated catalog rather than stopping at the first page. If a store is large enough to hit our 5,000-product ceiling we say so on screen and mark the count as a lower bound, rather than quietly showing you a partial catalog that looks complete.",
   },
   {
     id: "blocked-stores",
@@ -47,6 +47,6 @@ export const FAQ_ENTRIES: readonly FaqEntry[] = [
     id: "export-data",
     question: "Can I export the data?",
     answer:
-      "Not yet. The catalogue is filtered and searched in the browser, and there is no export endpoint today. Everything you see is derived from the public products.json payload, so any store you can load here you can also pull with a direct request.",
+      "Not yet. The catalog is filtered and searched in the browser, and there is no export endpoint today. Everything you see is derived from the public products.json payload, so any store you can load here you can also pull with a direct request.",
   },
 ]

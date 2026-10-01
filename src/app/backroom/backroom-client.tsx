@@ -73,12 +73,12 @@ const usePersistedSidebar = () => {
 /** Shared by the skip link and the landmark it targets. */
 const MAIN_CONTENT_ID = "main-content"
 
-type CatalogueViewerProps = {
+type CatalogViewerProps = {
   /** `?domain=` read on the server, so the route can still server-render. */
   initialDomain?: string
 }
 
-export const CatalogueViewer = ({ initialDomain }: CatalogueViewerProps) => {
+export const CatalogViewer = ({ initialDomain }: CatalogViewerProps) => {
   const { sites, addSite, removeSite } = useSavedSites()
   const scrape = useStoreScrape()
   const { open: sidebarOpen, handleOpenChange: handleSidebarOpenChange } =
@@ -197,8 +197,8 @@ export const CatalogueViewer = ({ initialDomain }: CatalogueViewerProps) => {
       */}
       <h1 className="sr-only">
         {domain
-          ? `Product catalogue for ${domain}`
-          : "Shopify product catalogue viewer"}
+          ? `Product catalog for ${domain}`
+          : "Shopify product catalog viewer"}
       </h1>
 
       <FilterSidebar
@@ -262,7 +262,7 @@ export const CatalogueViewer = ({ initialDomain }: CatalogueViewerProps) => {
 
             {truncated && (
               <Alert className="mb-6">
-                <AlertTitle>Showing a partial catalogue</AlertTitle>
+                <AlertTitle>Showing a partial catalog</AlertTitle>
                 <AlertDescription className="text-pretty">
                   This store has more products than one scrape can reach. The
                   counts below are a lower bound.
@@ -403,7 +403,7 @@ export const CatalogueViewer = ({ initialDomain }: CatalogueViewerProps) => {
                   <EmptyTitle>No store loaded</EmptyTitle>
                   <EmptyDescription>
                     Enter a Shopify storefront above to pull its full product
-                    catalogue. Nothing is stored on our servers.
+                    catalog. Nothing is stored on our servers.
                   </EmptyDescription>
                 </EmptyHeader>
               </Empty>

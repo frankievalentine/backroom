@@ -7,7 +7,7 @@
  * sidebar badge and the footer cannot drift apart.
  *
  * The previous name was "Product Scraper", which oversold the tool: it
- * promised extraction, and there is no export. The catalogue is the thing being
+ * promised extraction, and there is no export. The catalog is the thing being
  * shown, which is what the name now says.
  */
 
@@ -25,7 +25,7 @@ export const BRAND_DESCRIPTOR = "A storefront explorer"
 
 /** Longer form for metadata and the footer. */
 export const BRAND_TAGLINE =
-  "Browse any Shopify store's full product catalogue. Filter by vendor, type, tag and price."
+  "Browse any Shopify store's full product catalog. Filter by vendor, type, tag and price."
 
 /** The tool route. Was `/scraper`; `/scraper` redirects here. */
 export const TOOL_ROUTE = "/backroom"

@@ -5,7 +5,7 @@
  *
  * Every domain here was verified to serve a parseable `/products.json` whose
  * first product actually belongs to that brand. That check matters: several
- * famous storefronts fail it. `kith.com` serves On Running's catalogue,
+ * famous storefronts fail it. `kith.com` serves On Running's catalog,
  * `shopify.com` and `peloton.com` 404 on products.json, and `ridge.com`,
  * `warbyparker.com` and `bombas.com` answer 403 or 429. A list built from brand
  * names alone sends users to dead ends.
@@ -13,7 +13,7 @@
  * `products` was measured on VERIFIED_ON by running this app's own scrape
  * against each store, so the numbers match what a user will actually see.
  * Stores marked `productsAreFloor` hit the scraper's 5,000-product pagination cap
- * cap, so their real catalogue is larger than the number shown. Counts drift;
+ * cap, so their real catalog is larger than the number shown. Counts drift;
  * re-run before trusting them, and drop any store that stops serving
  * products.json.
  */
@@ -25,7 +25,7 @@ export type PopularSite = {
   name: string
   /** What the store sells, one short phrase. */
   category: string
-  /** Measured catalogue size, rounded down to the nearest hundred. */
+  /** Measured catalog size, rounded down to the nearest hundred. */
   products: number
   /** True when measurement stopped at the cap, so `products` is a lower bound. */
   productsAreFloor: boolean
@@ -96,8 +96,8 @@ export const POPULAR_SITE_LIMIT = 8
 export const getPopularSites = (limit = POPULAR_SITE_LIMIT): PopularSite[] =>
   POPULAR_SITES.slice(0, limit)
 
-/** Human-readable catalogue size, e.g. "1.4k products" or "5k+ products". */
-export const formatCatalogueSize = (site: PopularSite): string => {
+/** Human-readable catalog size, e.g. "1.4k products" or "5k+ products". */
+export const formatCatalogSize = (site: PopularSite): string => {
   const { products, productsAreFloor } = site
 
   const formatted =

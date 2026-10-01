@@ -22,7 +22,7 @@ import { cn } from "@/lib/utils"
 export const metadata: Metadata = {
   title: BRAND_NAME,
   description:
-    "Paste a Shopify storefront URL and browse its full product catalogue. Filter by vendor, type, tag and price.",
+    "Paste a Shopify storefront URL and browse its full product catalog. Filter by vendor, type, tag and price.",
 }
 
 const PAGE_WIDTH = "max-w-6xl"
@@ -31,12 +31,12 @@ const VALUE_PROPS = [
   {
     icon: ZapIcon,
     title: "No setup",
-    body: "Paste a storefront URL and the catalogue loads. No account, no key, no install.",
+    body: "Paste a storefront URL and the catalog loads. No account, no key, no install.",
   },
   {
     icon: BoxesIcon,
     title: "Every product, every variant",
-    body: "Shopify paginates its catalogue. We walk the pages rather than stopping at the first one.",
+    body: "Shopify paginates its catalog. We walk the pages rather than stopping at the first one.",
   },
   {
     icon: FilterIcon,
@@ -101,7 +101,7 @@ export default function HomePage() {
         >
           <div className="max-w-xl">
             <h1 className="text-4xl font-semibold tracking-tight text-balance sm:text-5xl">
-              Browse any Shopify store&rsquo;s catalogue
+              Browse any Shopify store&rsquo;s catalog
             </h1>
 
             <p className="mt-5 text-lg text-pretty text-muted-foreground">
@@ -115,7 +115,7 @@ export default function HomePage() {
                 href={TOOL_ROUTE}
                 className={cn(buttonVariants({ size: "lg" }), "gap-1.5")}
               >
-                Open the catalogue
+                Open the catalog
                 <ArrowRightIcon aria-hidden="true" />
               </Link>
 
@@ -200,7 +200,7 @@ export default function HomePage() {
           <SectionHeading
             id="popular-heading"
             title="Popular Shopify stores"
-            description="A shortlist of well-known storefronts and how big their catalogues are. Open one to load it."
+            description="A shortlist of well-known storefronts and how big their catalogs are. Open one to load it."
           />
 
           <ul className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -255,7 +255,7 @@ export default function HomePage() {
             href={TOOL_ROUTE}
             className="underline underline-offset-4 hover:text-foreground"
           >
-            Open the catalogue
+            Open the catalog
           </Link>
         </div>
       </footer>

@@ -8,7 +8,7 @@ type SiteHeaderProps = {
   /** Route context shown next to the wordmark, e.g. the loaded domain. */
   parent?: string
   /**
-   * Set on the catalogue route.
+   * Set on the catalog route.
    *
    * The call to action into the tool is suppressed there, because it would link
    * the page to itself. This has to be an explicit signal rather than inferred
@@ -82,7 +82,7 @@ export const SiteHeader = ({
                   buttonVariants({ variant: "outline", size: "sm" })
                 )}
               >
-                Open catalogue
+                Open catalog
               </Link>
             ) : null)}
         </div>

@@ -1,7 +1,7 @@
 # Backroom
 
 *A storefront explorer.* Paste a Shopify storefront URL and browse its full
-product catalogue. Filter by vendor, product type, tag and price.
+product catalog. Filter by vendor, product type, tag and price.
 
 ## Getting started
 
@@ -57,7 +57,7 @@ correct tool here.
 | `/` | Home page: ranked popular stores plus featured and sponsored placements |
 | `/backroom` | The tool. Accepts `?domain=<host>` and loads it on arrival |
 | `/scraper` | 308-redirects to `/backroom`, carrying any query string |
-| `POST /api/scrape` | Fetches and normalises a store's catalogue |
+| `POST /api/scrape` | Fetches and normalises a store's catalog |
 
 ### Data flow
 
@@ -73,7 +73,7 @@ Notable behaviours:
   addresses are refused in `src/lib/domain.ts`.
 - **Honest pagination.** The fetcher is capped and reports `truncated` when it
   stopped early, so the UI can tell the user the count is a lower bound rather
-  than presenting a partial catalogue as complete.
+  than presenting a partial catalog as complete.
 - **No swallowing errors.** A failed page mid-walk is surfaced, not discarded.
 
 ### Component library
@@ -160,7 +160,7 @@ monochrome version of the same effect if the colour ever needs toning down.
 Two files drive the home page, and both are meant to be edited directly:
 
 - `src/lib/popular-sites.ts` — the ranked store list. Domains were verified to
-  serve a parseable `products.json` belonging to that brand, and catalogue sizes
+  serve a parseable `products.json` belonging to that brand, and catalog sizes
   were measured. See the note at the top of the file: several famous storefronts
   fail that check, so re-verify before adding one.
 - `src/lib/featured.ts` — featured and sponsored placements, with expiry dates.

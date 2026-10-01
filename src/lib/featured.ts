@@ -34,7 +34,7 @@ export type FeaturedPlacement = {
 }
 
 /**
- * Seed placements. Every domain was verified to serve its own catalogue; see
+ * Seed placements. Every domain was verified to serve its own catalog; see
  * the note in popular-sites.ts for the storefronts that failed that check.
  */
 export const FEATURED_PLACEMENTS: readonly FeaturedPlacement[] = [
@@ -44,7 +44,7 @@ export const FEATURED_PLACEMENTS: readonly FeaturedPlacement[] = [
     status: "placeholder",
     domain: "taylorstitch.com",
     name: "Taylor Stitch",
-    headline: "Deep catalogue, richly tagged",
+    headline: "Deep catalog, richly tagged",
     description:
       "Nearly four thousand products where vendor and type facets overlap heavily, which makes it a good stress test for filtering.",
   },
@@ -64,7 +64,7 @@ export const FEATURED_PLACEMENTS: readonly FeaturedPlacement[] = [
     status: "placeholder",
     domain: "cuyana.com",
     name: "Cuyana",
-    headline: "Small catalogue, high signal",
+    headline: "Small catalog, high signal",
     description:
       "Around nine hundred products with consistent tags and imagery, which makes it a reliable end-to-end smoke test.",
   },

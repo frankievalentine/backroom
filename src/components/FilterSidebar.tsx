@@ -143,7 +143,7 @@ type AvailabilityFacetProps = {
 /**
  * In-stock toggle.
  *
- * Off by default, because sold-out items are still catalogue entries. The count
+ * Off by default, because sold-out items are still catalog entries. The count
  * of what the toggle hides is shown so the control explains itself before it is
  * used, rather than appearing to do nothing on a fully in-stock store.
  */
@@ -186,7 +186,7 @@ const AvailabilityFacet = ({
             {soldOutCount > 0 && (
               <span className="sr-only">
                 {" "}
-                ({soldOutCount} sold out in this catalogue)
+                ({soldOutCount} sold out in this catalog)
               </span>
             )}
           </FacetRow>

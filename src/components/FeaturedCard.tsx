@@ -48,7 +48,7 @@ export const FeaturedCard = ({
         `variant="white"` on the grounds that the rainbow would fight the design
         system -- that reasoning was partly wrong, since these cards are on the
         home page and never share a viewport with the green `--price` token on
-        the catalogue's product cards. The rainbow is confined to a 1.5px moving
+        the catalog's product cards. The rainbow is confined to a 1.5px moving
         border on hover, so it reads as one surface treatment rather than as
         four competing brand colours.
       */}
@@ -107,7 +107,7 @@ export const FeaturedCard = ({
         </span>
 
         <span className="sr-only">
-          : open {placement.domain} in the catalogue
+          : open {placement.domain} in the catalog
         </span>
       </Link>
     </div>
