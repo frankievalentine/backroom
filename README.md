@@ -133,6 +133,27 @@ need changing.
 Native scroll-snap is the cheaper option on bundle size and is a reasonable
 call to revisit if the carousel grows more complex or Embla becomes a problem.
 
+### Third-party registry components
+
+`@aceternity/glowing-effect`, used on the featured cards, came from a community
+registry. Note that its registry item **does not declare its `motion/react`
+dependency** — `shadcn add` reported success and wrote the file, but
+`pnpm build` then failed on the unresolved import until `motion` was installed
+by hand. Check `package.json` after adding anything from a third-party namespace
+rather than trusting the install output.
+
+Two things the component does not handle, applied at the call site in
+`FeaturedCard`:
+
+- `disabled` defaults to `true` and renders nothing, so it must be passed
+  `disabled={false}` (or a reduced-motion signal) explicitly.
+- It attaches a document-level `pointermove` listener and animates a conic
+  gradient every frame, so it is switched off entirely under
+  `prefers-reduced-motion` rather than slowed down.
+
+`variant="white"` is used instead of the default four-hue rainbow, because this
+interface runs on a single neutral ramp plus one green accent.
+
 ### Configuration files
 
 Two files drive the home page, and both are meant to be edited directly:

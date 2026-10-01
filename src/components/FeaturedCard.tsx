@@ -1,6 +1,8 @@
 import { SparklesIcon } from "lucide-react"
 import Link from "next/link"
 
+import { GlowingEffect } from "@/components/ui/glowing-effect"
+import { usePrefersReducedMotion } from "@/hooks/use-prefers-reduced-motion"
 import type { FeaturedPlacement } from "@/lib/featured"
 
 /**
@@ -21,9 +23,42 @@ export const FeaturedCard = ({
 }) => {
   const isSponsored = placement.kind === "sponsored"
   const isLive = placement.status === "live"
+  const reducedMotion = usePrefersReducedMotion()
 
   return (
     <div className="group/feature relative flex h-full flex-col rounded-xl border bg-card p-6 transition-colors hover:border-foreground/25 focus-within:border-ring">
+      {/*
+        Pointer-tracked border glow.
+
+        The card is `relative`, which is what this positions against, and the
+        component is `pointer-events-none`, so it cannot intercept the card's
+        click or its focus ring.
+
+        Two things the component does not handle:
+
+        1. `disabled` defaults to true and renders nothing, so it has to be
+           turned off explicitly or this is dead markup.
+        2. It attaches a document-level `pointermove` listener and animates a
+           conic gradient every frame. Under `prefers-reduced-motion` that is
+           precisely the continuous motion the preference asks us not to show,
+           so the effect is skipped rather than merely slowed.
+
+        `variant="white"` because the default is a four-hue rainbow
+        (#dd7bbb/#d79f1e/#5a922c/#4c7894). This interface is built on a single
+        neutral ramp plus one green accent; a rainbow on every card would put
+        four competing hues on screen and collide with the price token's green.
+      */}
+      <GlowingEffect
+        disabled={reducedMotion}
+        glow
+        variant="white"
+        spread={42}
+        proximity={64}
+        inactiveZone={0}
+        movementDuration={1.4}
+        borderWidth={1.5}
+      />
+
       <Link
         href={`/scraper?domain=${encodeURIComponent(placement.domain)}`}
         className="flex flex-1 flex-col rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
