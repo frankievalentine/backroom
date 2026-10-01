@@ -112,6 +112,27 @@ wrapper instead of patching the primitive. `FilterSidebar` does this for the
 sidebar's open state, because the registry's `SidebarProvider` writes a
 `sidebar_state` cookie but never reads it back.
 
+### Why `embla-carousel-react` is a dependency
+
+The home page's featured carousel is the only reason this package exists. It is
+not a choice made in application code: the registry item for `carousel` declares
+it, so `shadcn add carousel` installed it.
+
+```
+https://ui.shadcn.com/r/styles/base-nova/carousel.json
+→ "dependencies": ["cn", "embla-carousel-react"]
+```
+
+Removing it means removing `ui/carousel.tsx`, which in turn means hand-rolling
+the carousel. That was weighed against native CSS scroll-snap
+(`snap-x snap-mandatory` plus `scrollBy` for the buttons, roughly 25 lines) and
+the decision was to keep Embla: the snap behaviour is maintained rather than
+ours, and the featured section is not the part of this codebase most likely to
+need changing.
+
+Native scroll-snap is the cheaper option on bundle size and is a reasonable
+call to revisit if the carousel grows more complex or Embla becomes a problem.
+
 ### Configuration files
 
 Two files drive the home page, and both are meant to be edited directly:
