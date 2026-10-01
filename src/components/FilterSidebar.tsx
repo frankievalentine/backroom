@@ -1,351 +1,392 @@
-'use client';
+"use client"
 
-import { useState, useMemo } from 'react';
-import { Sidebar, SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
-import { Badge } from '@/components/ui/badge';
-import { Filter, X, Building, Package, Tag, DollarSign } from 'lucide-react';
+import {
+  Building2Icon,
+  DollarSignIcon,
+  PackageIcon,
+  TagIcon,
+  XIcon,
+} from "lucide-react"
+import * as React from "react"
 
-interface ShopifyProduct {
-  id: number;
-  title: string;
-  handle: string;
-  vendor: string;
-  product_type: string;
-  created_at: string;
-  updated_at: string;
-  published_at: string;
-  tags: string;
-  variants: Array<{
-    id: number;
-    title: string;
-    price: string;
-    sku: string;
-    compare_at_price: string | null;
-  }>;
-  images: Array<{
-    id: number;
-    src: string;
-    alt: string | null;
-    width: number;
-    height: number;
-  }>;
-  image: {
-    id: number;
-    src: string;
-    alt: string | null;
-    width: number;
-    height: number;
-  };
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Separator } from "@/components/ui/separator"
+import { Sidebar, SidebarContent, SidebarHeader } from "@/components/ui/sidebar"
+import {
+  buildFilterOptions,
+  countActiveFilters,
+  EMPTY_FILTERS,
+  type FilterOption,
+  type Filters,
+  hasActiveFilters as filtersAreActive,
+  PRICE_RANGES,
+  type PriceRangeId,
+  toggleValue,
+} from "@/lib/filters"
+import type { ShopifyProduct } from "@/lib/shopify"
+
+type FilterSidebarProps = {
+  products: ShopifyProduct[]
+  filters: Filters
+  onFiltersChange: (filters: Filters) => void
 }
 
-interface FilterOptions {
-  vendors: string[];
-  productTypes: string[];
-  tags: string[];
-  priceRanges: Array<{ min: number; max: number; label: string }>;
+/** Rows rendered before the "Show all" control appears. */
+const PREVIEW_COUNT = 8
+
+type FacetSectionProps = {
+  icon: React.ReactNode
+  title: string
+  options: FilterOption[]
+  selected: string[]
+  onToggle: (value: string) => void
+  searchPlaceholder: string
+  emptyMessage: string
 }
 
-interface Filters {
-  vendors: string[];
-  productTypes: string[];
-  tags: string[];
-  priceRanges: string[];
-}
+/**
+ * One collapsible facet.
+ *
+ * Lists longer than `PREVIEW_COUNT` collapse behind an explicit control. The
+ * previous version hard-truncated tags at 20 with no way to reach the rest, and
+ * rendered vendors uncapped, so a 500-vendor store produced 500 checkboxes.
+ */
+const FacetSection = ({
+  icon,
+  title,
+  options,
+  selected,
+  onToggle,
+  searchPlaceholder,
+  emptyMessage,
+}: FacetSectionProps) => {
+  const [query, setQuery] = React.useState("")
+  const [expanded, setExpanded] = React.useState(false)
 
-interface FilterSidebarProps {
-  products: ShopifyProduct[];
-  onFiltersChange: (filters: Filters) => void;
-}
+  const term = query.trim().toLowerCase()
 
-export default function FilterSidebar({ products, onFiltersChange }: FilterSidebarProps) {
-  const [selectedVendors, setSelectedVendors] = useState<string[]>([]);
-  const [selectedProductTypes, setSelectedProductTypes] = useState<string[]>([]);
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [selectedPriceRanges, setSelectedPriceRanges] = useState<string[]>([]);
+  const visible = React.useMemo(() => {
+    if (!term) return options
 
-  const filterOptions = useMemo(() => {
-    const vendors = new Set<string>();
-    const productTypes = new Set<string>();
-    const tags = new Set<string>();
-    const prices: number[] = [];
+    return options.filter((option) => option.value.toLowerCase().includes(term))
+  }, [options, term])
 
-    products.forEach((product) => {
-      if (product.vendor) vendors.add(product.vendor);
-      if (product.product_type) productTypes.add(product.product_type);
-      
-      if (product.tags && typeof product.tags === 'string') {
-        product.tags.split(',').forEach((tag) => {
-          const trimmedTag = tag.trim();
-          if (trimmedTag) tags.add(trimmedTag);
-        });
-      }
+  const isSearching = term.length > 0
+  const canExpand = !isSearching && visible.length > PREVIEW_COUNT
+  const shown =
+    canExpand && !expanded ? visible.slice(0, PREVIEW_COUNT) : visible
 
-      product.variants.forEach((variant) => {
-        const price = parseFloat(variant.price);
-        if (!isNaN(price)) prices.push(price);
-      });
-    });
+  const selectedInSection = selected.filter((value) =>
+    options.some((option) => option.value === value)
+  ).length
 
-    const priceRanges = [
-      { min: 0, max: 25, label: 'Under $25' },
-      { min: 25, max: 50, label: '$25 - $50' },
-      { min: 50, max: 100, label: '$50 - $100' },
-      { min: 100, max: 200, label: '$100 - $200' },
-      { min: 200, max: Infinity, label: 'Over $200' },
-    ];
-
-    return {
-      vendors: Array.from(vendors).sort(),
-      productTypes: Array.from(productTypes).sort(),
-      tags: Array.from(tags).sort(),
-      priceRanges,
-    };
-  }, [products]);
-
-  const handleVendorChange = (vendor: string, checked: boolean) => {
-    const newVendors = checked 
-      ? [...selectedVendors, vendor]
-      : selectedVendors.filter((v) => v !== vendor);
-    
-    setSelectedVendors(newVendors);
-    updateFilters(newVendors, selectedProductTypes, selectedTags, selectedPriceRanges);
-  };
-
-  const handleProductTypeChange = (type: string, checked: boolean) => {
-    const newTypes = checked
-      ? [...selectedProductTypes, type]
-      : selectedProductTypes.filter((t) => t !== type);
-    
-    setSelectedProductTypes(newTypes);
-    updateFilters(selectedVendors, newTypes, selectedTags, selectedPriceRanges);
-  };
-
-  const handleTagChange = (tag: string, checked: boolean) => {
-    const newTags = checked
-      ? [...selectedTags, tag]
-      : selectedTags.filter((t) => t !== tag);
-    
-    setSelectedTags(newTags);
-    updateFilters(selectedVendors, selectedProductTypes, newTags, selectedPriceRanges);
-  };
-
-  const handlePriceRangeChange = (rangeLabel: string, checked: boolean) => {
-    const newRanges = checked
-      ? [...selectedPriceRanges, rangeLabel]
-      : selectedPriceRanges.filter((r) => r !== rangeLabel);
-    
-    setSelectedPriceRanges(newRanges);
-    updateFilters(selectedVendors, selectedProductTypes, selectedTags, newRanges);
-  };
-
-  const updateFilters = (
-    vendors: string[],
-    productTypes: string[],
-    tags: string[],
-    priceRanges: string[]
-  ) => {
-    onFiltersChange({
-      vendors,
-      productTypes,
-      tags,
-      priceRanges,
-    });
-  };
-
-  const clearAllFilters = () => {
-    setSelectedVendors([]);
-    setSelectedProductTypes([]);
-    setSelectedTags([]);
-    setSelectedPriceRanges([]);
-    onFiltersChange({
-      vendors: [],
-      productTypes: [],
-      tags: [],
-      priceRanges: [],
-    });
-  };
-
-  const hasActiveFilters = selectedVendors.length > 0 || 
-                          selectedProductTypes.length > 0 || 
-                          selectedTags.length > 0 || 
-                          selectedPriceRanges.length > 0;
+  if (options.length === 0) return null
 
   return (
-    <Sidebar variant="inset" className="bg-sidebar border-sidebar-border">
-      <SidebarHeader className="p-4 2xl:p-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <Filter className="h-5 w-5 flex-shrink-0 text-gray-600 dark:text-gray-400" />
-            <h2 className="text-lg font-semibold 2xl:text-xl text-gray-900 dark:text-gray-100">Filters</h2>
-          </div>
-          {hasActiveFilters && (
-            <Button variant="ghost" size="sm" onClick={clearAllFilters}>
-              <X className="h-4 w-4" />
+    <section aria-labelledby={`facet-${title}`} className="space-y-2">
+      <div className="flex items-center gap-2">
+        <span className="text-muted-foreground" aria-hidden="true">
+          {icon}
+        </span>
+        <h3
+          id={`facet-${title}`}
+          className="flex items-center gap-2 text-sm font-medium"
+        >
+          {title}
+          {selectedInSection > 0 && (
+            <Badge variant="secondary" className="tabular-nums">
+              {selectedInSection}
+            </Badge>
+          )}
+        </h3>
+      </div>
+
+      {options.length > PREVIEW_COUNT && (
+        <Input
+          type="search"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder={searchPlaceholder}
+          aria-label={`Filter ${title.toLowerCase()} options`}
+          className="h-8"
+        />
+      )}
+
+      {shown.length === 0 ? (
+        <p className="text-xs text-muted-foreground">{emptyMessage}</p>
+      ) : (
+        <ul className="space-y-0.5">
+          {shown.map((option) => {
+            const id = `${title.toLowerCase().replace(/\s+/g, "-")}-${option.value}`
+
+            return (
+              <li key={option.value}>
+                <div className="flex items-center gap-2 rounded-md px-1 py-1 hover:bg-accent has-[[data-slot=checkbox]:focus-visible]:ring-2 has-[[data-slot=checkbox]:focus-visible]:ring-ring has-[[data-slot=checkbox]:focus-visible]:ring-inset">
+                  <Checkbox
+                    id={id}
+                    checked={selected.includes(option.value)}
+                    onCheckedChange={() => onToggle(option.value)}
+                  />
+                  <Label
+                    htmlFor={id}
+                    className="min-w-0 flex-1 cursor-pointer truncate font-normal"
+                  >
+                    {option.value}
+                  </Label>
+                  <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                    {option.count}
+                  </span>
+                </div>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+
+      {canExpand && (
+        <Button
+          type="button"
+          variant="link"
+          size="sm"
+          onClick={() => setExpanded((value) => !value)}
+          className="h-auto px-1 py-0.5 text-xs"
+        >
+          {expanded ? "Show fewer" : `Show all ${visible.length}`}
+        </Button>
+      )}
+    </section>
+  )
+}
+
+export const FilterSidebar = ({
+  products,
+  filters,
+  onFiltersChange,
+}: FilterSidebarProps) => {
+  const options = React.useMemo(() => buildFilterOptions(products), [products])
+  const active = filtersAreActive(filters)
+  const activeCount = countActiveFilters(filters)
+
+  const handleToggle = React.useCallback(
+    (facet: "vendors" | "productTypes" | "tags", value: string) => {
+      onFiltersChange({
+        ...filters,
+        [facet]: toggleValue(filters[facet], value),
+      })
+    },
+    [filters, onFiltersChange]
+  )
+
+  const handlePriceToggle = React.useCallback(
+    (id: PriceRangeId) => {
+      onFiltersChange({
+        ...filters,
+        priceRanges: toggleValue(filters.priceRanges, id) as PriceRangeId[],
+      })
+    },
+    [filters, onFiltersChange]
+  )
+
+  const handleClear = React.useCallback(() => {
+    onFiltersChange(EMPTY_FILTERS)
+  }, [onFiltersChange])
+
+  if (products.length === 0) {
+    return (
+      <Sidebar className="bg-sidebar" aria-label="Filters">
+        <SidebarHeader className="px-4 py-4">
+          <h2 className="text-sm font-medium">Filters</h2>
+        </SidebarHeader>
+        <SidebarContent>
+          <p className="px-4 text-sm text-muted-foreground">
+            Filters appear once a store is loaded.
+          </p>
+        </SidebarContent>
+      </Sidebar>
+    )
+  }
+
+  return (
+    <Sidebar className="bg-sidebar" aria-label="Filters">
+      <SidebarHeader className="px-4 py-4">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-sm font-medium">
+            Filters
+            {active && (
+              <span className="ml-2 text-xs font-normal tabular-nums text-muted-foreground">
+                {activeCount} active
+              </span>
+            )}
+          </h2>
+
+          {active && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={handleClear}
+              className="h-7 gap-1 px-2 text-xs"
+            >
+              <XIcon aria-hidden="true" />
+              Clear
             </Button>
           )}
         </div>
       </SidebarHeader>
-      
+
       <SidebarContent>
-        <ScrollArea className="flex-1 p-4 2xl:p-6">
-          {products.length === 0 ? (
-            <div className="text-center text-muted-foreground py-8">
-              No products to filter
-            </div>
-          ) : (
-            <div className="space-y-6">
-              {filterOptions.vendors.length > 0 && (
-                <div>
-                  <div className="flex items-center space-x-3 mb-3">
-                    <Building className="h-5 w-5 flex-shrink-0 text-gray-600 dark:text-gray-400" />
-                    <Label className="text-sm font-medium block 2xl:text-base text-gray-700 dark:text-gray-300">Vendors</Label>
-                  </div>
-                  <div className="space-y-2">
-                    {filterOptions.vendors.map((vendor) => (
-                      <div key={vendor} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`vendor-${vendor}`}
-                          checked={selectedVendors.includes(vendor)}
-                          onCheckedChange={(checked) => handleVendorChange(vendor, checked as boolean)}
-                          className="p-2 mr-3 ml-2"
-                        />
-                        <Label 
-                          htmlFor={`vendor-${vendor}`} 
-                          className="text-sm font-normal cursor-pointer"
-                        >
-                          {vendor}
-                        </Label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+        <ScrollArea className="flex-1">
+          <div className="space-y-6 px-4 py-1 pb-8">
+            <FacetSection
+              icon={<Building2Icon className="size-4" />}
+              title="Vendors"
+              options={options.vendors}
+              selected={filters.vendors}
+              onToggle={(value) => handleToggle("vendors", value)}
+              searchPlaceholder="Find a vendor"
+              emptyMessage="No vendors match that search."
+            />
 
-              {filterOptions.productTypes.length > 0 && (
-                <div>
-                  <div className="flex items-center space-x-3 mb-3">
-                    <Package className="h-5 w-5 flex-shrink-0 text-gray-600 dark:text-gray-400" />
-                    <Label className="text-sm font-medium block 2xl:text-base text-gray-700 dark:text-gray-300">Product Types</Label>
-                  </div>
-                  <div className="space-y-2">
-                    {filterOptions.productTypes.map((type) => (
-                      <div key={type} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`type-${type}`}
-                          checked={selectedProductTypes.includes(type)}
-                          onCheckedChange={(checked) => handleProductTypeChange(type, checked as boolean)}
-                          className="p-2 mr-3 ml-2"
-                        />
-                        <Label 
-                          htmlFor={`type-${type}`} 
-                          className="text-sm font-normal cursor-pointer"
-                        >
-                          {type}
-                        </Label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+            <FacetSection
+              icon={<PackageIcon className="size-4" />}
+              title="Product types"
+              options={options.productTypes}
+              selected={filters.productTypes}
+              onToggle={(value) => handleToggle("productTypes", value)}
+              searchPlaceholder="Find a type"
+              emptyMessage="No product types match that search."
+            />
 
-              {filterOptions.priceRanges.length > 0 && (
-                <div>
-                  <div className="flex items-center space-x-3 mb-3">
-                    <DollarSign className="h-5 w-5 flex-shrink-0 text-gray-600 dark:text-gray-400" />
-                    <Label className="text-sm font-medium block 2xl:text-base text-gray-700 dark:text-gray-300">Price Ranges</Label>
-                  </div>
-                  <div className="space-y-2">
-                    {filterOptions.priceRanges.map((range) => (
-                      <div key={range.label} className="flex items-center space-x-2">
+            <section aria-labelledby="facet-price" className="space-y-2">
+              <div className="flex items-center gap-2">
+                <DollarSignIcon
+                  className="size-4 text-muted-foreground"
+                  aria-hidden="true"
+                />
+                <h3 id="facet-price" className="text-sm font-medium">
+                  Price
+                </h3>
+              </div>
+
+              <ul className="space-y-0.5">
+                {PRICE_RANGES.map((range) => {
+                  const id = `price-${range.id}`
+
+                  return (
+                    <li key={range.id}>
+                      <div className="flex items-center gap-2 rounded-md px-1 py-1 hover:bg-accent has-[[data-slot=checkbox]:focus-visible]:ring-2 has-[[data-slot=checkbox]:focus-visible]:ring-ring has-[[data-slot=checkbox]:focus-visible]:ring-inset">
                         <Checkbox
-                          id={`price-${range.label}`}
-                          checked={selectedPriceRanges.includes(range.label)}
-                          onCheckedChange={(checked) => handlePriceRangeChange(range.label, checked as boolean)}
-                          className="p-2 mr-3 ml-2"
+                          id={id}
+                          checked={filters.priceRanges.includes(range.id)}
+                          onCheckedChange={() => handlePriceToggle(range.id)}
                         />
-                        <Label 
-                          htmlFor={`price-${range.label}`} 
-                          className="text-sm font-normal cursor-pointer"
+                        <Label
+                          htmlFor={id}
+                          className="flex-1 cursor-pointer font-normal"
                         >
                           {range.label}
                         </Label>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+                    </li>
+                  )
+                })}
+              </ul>
+            </section>
 
-              {filterOptions.tags.length > 0 && (
-                <div>
-                  <div className="flex items-center space-x-3 mb-3">
-                    <Tag className="h-5 w-5 flex-shrink-0 text-gray-600 dark:text-gray-400" />
-                    <Label className="text-sm font-medium block 2xl:text-base text-gray-700 dark:text-gray-300">Tags</Label>
-                  </div>
-                  <div className="space-y-2">
-                    {filterOptions.tags.slice(0, 20).map((tag) => (
-                      <div key={tag} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`tag-${tag}`}
-                          checked={selectedTags.includes(tag)}
-                          onCheckedChange={(checked) => handleTagChange(tag, checked as boolean)}
-                          className="p-2 mr-3 ml-2"
+            <FacetSection
+              icon={<TagIcon className="size-4" />}
+              title="Tags"
+              options={options.tags}
+              selected={filters.tags}
+              onToggle={(value) => handleToggle("tags", value)}
+              searchPlaceholder="Find a tag"
+              emptyMessage="No tags match that search."
+            />
+
+            {active && (
+              <>
+                <Separator />
+                <section aria-labelledby="active-filters" className="space-y-2">
+                  <h3 id="active-filters" className="text-sm font-medium">
+                    Applied
+                  </h3>
+                  <ul className="flex flex-wrap gap-1">
+                    {filters.vendors.map((value) => (
+                      <li key={`vendor-${value}`}>
+                        <AppliedChip
+                          label={value}
+                          onRemove={() => handleToggle("vendors", value)}
                         />
-                        <Label 
-                          htmlFor={`tag-${tag}`} 
-                          className="text-sm font-normal cursor-pointer"
-                        >
-                          {tag}
-                        </Label>
-                      </div>
+                      </li>
                     ))}
-                    {filterOptions.tags.length > 20 && (
-                      <div className="text-xs text-muted-foreground mt-2">
-                        Showing 20 of {filterOptions.tags.length} tags
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
+                    {filters.productTypes.map((value) => (
+                      <li key={`type-${value}`}>
+                        <AppliedChip
+                          label={value}
+                          onRemove={() => handleToggle("productTypes", value)}
+                        />
+                      </li>
+                    ))}
+                    {filters.tags.map((value) => (
+                      <li key={`tag-${value}`}>
+                        <AppliedChip
+                          label={value}
+                          onRemove={() => handleToggle("tags", value)}
+                        />
+                      </li>
+                    ))}
+                    {filters.priceRanges.map((id) => {
+                      const range = PRICE_RANGES.find(
+                        (candidate) => candidate.id === id
+                      )
 
-              {hasActiveFilters && (
-                <>
-                  <Separator />
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">Active Filters</Label>
-                    <div className="flex flex-wrap gap-1">
-                      {selectedVendors.map((vendor) => (
-                        <Badge key={vendor} variant="secondary" className="text-xs">
-                          {vendor}
-                        </Badge>
-                      ))}
-                      {selectedProductTypes.map((type) => (
-                        <Badge key={type} variant="secondary" className="text-xs">
-                          {type}
-                        </Badge>
-                      ))}
-                      {selectedPriceRanges.map((range) => (
-                        <Badge key={range} variant="secondary" className="text-xs">
-                          {range}
-                        </Badge>
-                      ))}
-                      {selectedTags.map((tag) => (
-                        <Badge key={tag} variant="secondary" className="text-xs">
-                          {tag}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
+                      if (!range) return null
+
+                      return (
+                        <li key={`price-${id}`}>
+                          <AppliedChip
+                            label={range.label}
+                            onRemove={() => handlePriceToggle(id)}
+                          />
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </section>
+              </>
+            )}
+          </div>
         </ScrollArea>
       </SidebarContent>
     </Sidebar>
-  );
+  )
 }
+
+type AppliedChipProps = {
+  label: string
+  onRemove: () => void
+}
+
+/**
+ * An applied filter that can be dismissed. The visible X is decorative; the
+ * accessible name lives on the button so screen readers announce what will be
+ * removed rather than just "button".
+ */
+const AppliedChip = ({ label, onRemove }: AppliedChipProps) => (
+  <Badge variant="secondary" className="max-w-full gap-1 pr-1">
+    <span className="truncate">{label}</span>
+    <button
+      type="button"
+      onClick={onRemove}
+      aria-label={`Remove ${label} filter`}
+      className="rounded-sm p-0.5 text-muted-foreground transition-colors hover:text-destructive"
+    >
+      <XIcon aria-hidden="true" />
+    </button>
+  </Badge>
+)

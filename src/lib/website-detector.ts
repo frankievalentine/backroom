@@ -1,112 +1,152 @@
-export async function detectWebsiteType(domain: string): Promise<'shopify' | 'unknown'> {
+import { normalizeProducts, type ShopifyProduct } from "@/lib/shopify"
+
+export type WebsiteType = "shopify" | "unknown"
+
+export type ScrapeResult = {
+  products: ShopifyProduct[]
+  /** True when pagination stopped early because a page failed. */
+  truncated: boolean
+  pagesFetched: number
+}
+
+/** Cap pagination so a store that always returns a full page cannot spin forever. */
+const MAX_PAGES = 20
+const PAGE_SIZE = 250
+const DETECT_TIMEOUT_MS = 5000
+const FETCH_TIMEOUT_MS = 10000
+
+/**
+ * Patterns that only appear on a real Shopify storefront.
+ *
+ * A bare /shopify/i is deliberately absent: it matches any page that merely
+ * mentions the word (a blog post, a "migrated from Shopify" notice, a Shopify
+ * app badge) and produced false positives.
+ */
+const SHOPIFY_HTML_PATTERNS = [
+  /cdn\.shopify\.com/i,
+  /Shopify\.theme/i,
+  /Shopify\.Analytics/i,
+  /window\.Shopify\b/,
+  /var\s+Shopify\s*=/,
+  /shopify-section/i,
+  /\/cdn\/shop\/files\//i,
+]
+
+const hasShopifyMarker = (html: string): boolean =>
+  SHOPIFY_HTML_PATTERNS.some((pattern) => pattern.test(html))
+
+/**
+ * Decide whether a domain runs Shopify.
+ *
+ * `/products.json` is the reliable signal, so it is tried first with GET rather
+ * than HEAD -- a number of stores reject HEAD outright. Only if that fails do we
+ * fall back to scanning the homepage markup.
+ */
+export const detectWebsiteType = async (
+  domain: string
+): Promise<WebsiteType> => {
   try {
-    // Check for Shopify-specific indicators
-    const shopifyIndicators = [
-      '/products.json',
-      '/collections.json',
-      '/cart.js',
-      'cdn.shopify.com',
-      'Shopify.theme'
-    ];
-
-    // First try the products.json endpoint (most reliable)
-    const productsUrl = `https://${domain}/products.json?limit=1`;
-    const productsResponse = await fetch(productsUrl, { 
-      method: 'HEAD',
-      signal: AbortSignal.timeout(5000) // 5 second timeout
-    });
-
-    if (productsResponse.ok) {
-      return 'shopify';
-    }
-
-    // Check for Shopify in HTML content
-    const homeUrl = `https://${domain}`;
-    const homeResponse = await fetch(homeUrl, { 
-      signal: AbortSignal.timeout(5000) 
-    });
-
-    if (homeResponse.ok) {
-      const html = await homeResponse.text();
-      
-      // Look for Shopify-specific patterns in HTML
-      const shopifyPatterns = [
-        /cdn\.shopify\.com/i,
-        /Shopify\.theme/i,
-        /shopify/i,
-        /var Shopify =/i,
-        /window\.Shopify/i,
-        /Shopify\.Analytics/i
-      ];
-
-      for (const pattern of shopifyPatterns) {
-        if (pattern.test(html)) {
-          return 'shopify';
-        }
+    const productsResponse = await fetch(
+      `https://${domain}/products.json?limit=1`,
+      {
+        method: "GET",
+        signal: AbortSignal.timeout(DETECT_TIMEOUT_MS),
+        headers: { accept: "application/json" },
       }
-    }
+    )
 
-    return 'unknown';
-  } catch (error) {
-    console.error(`Error detecting website type for ${domain}:`, error);
-    return 'unknown';
+    if (productsResponse.ok) return "shopify"
+
+    const homeResponse = await fetch(`https://${domain}`, {
+      signal: AbortSignal.timeout(DETECT_TIMEOUT_MS),
+      headers: {
+        accept: "text/html",
+        "user-agent": "ProductScraper/1.0 (+https://product-scraper.app)",
+      },
+    })
+
+    if (!homeResponse.ok) return "unknown"
+
+    const html = await homeResponse.text()
+
+    return hasShopifyMarker(html) ? "shopify" : "unknown"
+  } catch {
+    return "unknown"
   }
 }
 
-const cache = new Map<string, { data: any[]; timestamp: number }>();
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+/**
+ * Walk `/products.json` until a short page proves we are past the end.
+ *
+ * A failed page sets `truncated` instead of being swallowed, so the caller can
+ * tell "this store has 40 products" apart from "we got 40 of 900 before the
+ * network gave up".
+ */
+export const fetchShopifyProducts = async (
+  domain: string
+): Promise<ScrapeResult> => {
+  const products: ShopifyProduct[] = []
+  let truncated = false
+  let pagesFetched = 0
 
-export async function fetchShopifyProducts(domain: string): Promise<any[]> {
-  const cacheKey = `shopify-${domain}`;
-  const cached = cache.get(cacheKey);
-  
-  if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-    return cached.data;
-  }
-
-  const allProducts: any[] = [];
-  let page = 0;
-  const limit = 250;
-  let hasMore = true;
-
-  while (hasMore) {
+  for (let page = 1; page <= MAX_PAGES; page += 1) {
     try {
-      const url = `https://${domain}/products.json?limit=${limit}&page=${page}`;
-      const response = await fetch(url, { 
-        signal: AbortSignal.timeout(10000) // 10 second timeout per request
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      const products = data.products || [];
-
-      if (products.length === 0) {
-        hasMore = false;
-      } else {
-        allProducts.push(...products);
-        page++;
-        
-        // If we got fewer products than the limit, we've reached the end
-        if (products.length < limit) {
-          hasMore = false;
+      const response = await fetch(
+        `https://${domain}/products.json?limit=${PAGE_SIZE}&page=${page}`,
+        {
+          signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+          headers: { accept: "application/json" },
         }
+      )
+
+      if (!response.ok) {
+        // A 4xx on page > 1 means we already walked off the end, which is fine.
+        if (page === 1) {
+          throw new Error(`Store returned HTTP ${response.status}.`)
+        }
+
+        break
       }
+
+      const data: unknown = await response.json()
+
+      if (!data || typeof data !== "object") {
+        truncated = page > 1
+        break
+      }
+
+      const batch = normalizeProducts((data as { products?: unknown }).products)
+
+      pagesFetched = page
+
+      if (batch.length === 0) break
+
+      products.push(...batch)
+
+      if (batch.length < PAGE_SIZE) break
     } catch (error) {
-      console.error(`Error fetching page ${page} for ${domain}:`, error);
-      hasMore = false;
+      if (page === 1) throw error
+
+      truncated = true
+      break
     }
   }
 
-  cache.set(cacheKey, { data: allProducts, timestamp: Date.now() });
-  return allProducts;
+  if (pagesFetched >= MAX_PAGES && products.length > 0) {
+    truncated = true
+  }
+
+  return { products, truncated, pagesFetched }
 }
 
-export async function fetchGenericProducts(domain: string): Promise<any[]> {
-  // Placeholder for future generic scraping implementation
-  // For now, return empty array
-  console.log(`Generic scraping not implemented for ${domain}`);
-  return [];
+/**
+ * Non-Shopify stores are not supported yet. Returning an empty result rather
+ * than a fabricated one keeps the UI honest about what it has.
+ */
+export const fetchGenericProducts = async (
+  domain: string
+): Promise<ScrapeResult> => {
+  console.warn(`Generic scraping not implemented for ${domain}`)
+
+  return { products: [], truncated: false, pagesFetched: 0 }
 }

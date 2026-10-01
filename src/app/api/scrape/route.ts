@@ -1,66 +1,144 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { detectWebsiteType, fetchShopifyProducts, fetchGenericProducts } from '@/lib/website-detector';
+import { type NextRequest, NextResponse } from "next/server"
 
-const apiCache = new Map<string, { data: any[]; timestamp: number; websiteType: string }>();
-const API_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+import { normalizeDomain } from "@/lib/domain"
+import type { ShopifyProduct } from "@/lib/shopify"
+import {
+  detectWebsiteType,
+  fetchGenericProducts,
+  fetchShopifyProducts,
+  type WebsiteType,
+} from "@/lib/website-detector"
+
+export const runtime = "nodejs"
+
+const CACHE_TTL_MS = 5 * 60 * 1000
+const MAX_CACHE_ENTRIES = 200
+
+type CacheEntry = {
+  products: ShopifyProduct[]
+  websiteType: WebsiteType
+  truncated: boolean
+  expiresAt: number
+}
+
+/**
+ * In-process cache.
+ *
+ * Note this is per-instance and best-effort: it will not survive across serverless
+ * instances and gives no cross-user consistency. It exists to stop one user
+ * hammering the same store within a session, nothing more. Swap for Redis or
+ * Next's data cache before relying on it at scale.
+ */
+const cache = new Map<string, CacheEntry>()
+
+const readCache = (key: string): CacheEntry | null => {
+  const entry = cache.get(key)
+
+  if (!entry) return null
+
+  if (Date.now() > entry.expiresAt) {
+    cache.delete(key)
+    return null
+  }
+
+  return entry
+}
+
+const writeCache = (
+  key: string,
+  entry: Omit<CacheEntry, "expiresAt">
+): void => {
+  // Simple bound so a crawl of thousands of domains cannot exhaust memory.
+  if (cache.size >= MAX_CACHE_ENTRIES) {
+    const oldestKey = cache.keys().next().value
+
+    if (oldestKey) cache.delete(oldestKey)
+  }
+
+  cache.set(key, { ...entry, expiresAt: Date.now() + CACHE_TTL_MS })
+}
+
+const errorResponse = (message: string, status: number) =>
+  NextResponse.json({ error: message }, { status })
 
 export async function POST(request: NextRequest) {
+  let body: unknown
+
   try {
-    const { domain } = await request.json();
+    body = await request.json()
+  } catch {
+    return errorResponse("Request body must be valid JSON.", 400)
+  }
 
-    if (!domain) {
+  const rawDomain =
+    body && typeof body === "object" && "domain" in body
+      ? (body as { domain: unknown }).domain
+      : null
+
+  if (typeof rawDomain !== "string") {
+    return errorResponse("Domain is required.", 400)
+  }
+
+  // Normalising server-side is what guarantees the client stores one canonical
+  // value per store, so duplicates and malformed product URLs cannot reappear.
+  const normalized = normalizeDomain(rawDomain)
+
+  if (!normalized.ok) {
+    return errorResponse(normalized.reason, 400)
+  }
+
+  const { domain } = normalized
+  const cacheKey = `products:${domain}`
+
+  const cached = readCache(cacheKey)
+
+  if (cached) {
+    return NextResponse.json({
+      domain,
+      products: cached.products,
+      count: cached.products.length,
+      websiteType: cached.websiteType,
+      truncated: cached.truncated,
+      cached: true,
+    })
+  }
+
+  try {
+    const websiteType = await detectWebsiteType(domain)
+    const { products, truncated } =
+      websiteType === "shopify"
+        ? await fetchShopifyProducts(domain)
+        : await fetchGenericProducts(domain)
+
+    writeCache(cacheKey, { products, websiteType, truncated })
+
+    if (websiteType !== "shopify") {
       return NextResponse.json(
-        { error: 'Domain is required' },
-        { status: 400 }
-      );
+        {
+          domain,
+          products: [],
+          count: 0,
+          websiteType,
+          truncated: false,
+          cached: false,
+          error: `${domain} does not look like a Shopify store.`,
+        },
+        { status: 422 }
+      )
     }
-
-    // Clean domain (remove protocol, www, etc.)
-    const cleanDomain = domain.replace(/^https?:\/\//, '').replace(/^www\./, '');
-
-    // Check cache first
-    const cacheKey = `products-${cleanDomain}`;
-    const cached = apiCache.get(cacheKey);
-    
-    if (cached && Date.now() - cached.timestamp < API_CACHE_DURATION) {
-      return NextResponse.json({
-        domain: cleanDomain,
-        products: cached.data,
-        count: cached.data.length,
-        websiteType: cached.websiteType
-      });
-    }
-
-    // Detect website type
-    const websiteType = await detectWebsiteType(cleanDomain);
-    
-    let products: any[] = [];
-    
-    if (websiteType === 'shopify') {
-      products = await fetchShopifyProducts(cleanDomain);
-    } else {
-      products = await fetchGenericProducts(cleanDomain);
-    }
-
-    // Cache the results
-    apiCache.set(cacheKey, { 
-      data: products, 
-      timestamp: Date.now(), 
-      websiteType 
-    });
 
     return NextResponse.json({
-      domain: cleanDomain,
+      domain,
       products,
       count: products.length,
-      websiteType
-    });
-
+      websiteType,
+      truncated,
+      cached: false,
+    })
   } catch (error) {
-    console.error('API Error:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch products' },
-      { status: 500 }
-    );
+    const message =
+      error instanceof Error ? error.message : "Failed to fetch products."
+
+    return errorResponse(message, 502)
   }
 }

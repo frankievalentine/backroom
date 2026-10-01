@@ -1,0 +1,325 @@
+"use client"
+
+import { AlertCircleIcon, SearchIcon, XIcon } from "lucide-react"
+import { useSearchParams } from "next/navigation"
+import * as React from "react"
+import { FilterSidebar } from "@/components/FilterSidebar"
+import { ProductGridSkeleton, ProductList } from "@/components/ProductList"
+import { SiteHeader } from "@/components/SiteHeader"
+import { SitePicker } from "@/components/SitePicker"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Button } from "@/components/ui/button"
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty"
+import { Input } from "@/components/ui/input"
+import {
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar"
+import { useSavedSites } from "@/hooks/use-saved-sites"
+import { useStoreScrape } from "@/hooks/use-store-scrape"
+import { applyFilters, EMPTY_FILTERS, searchProducts } from "@/lib/filters"
+import type { ShopifyProduct } from "@/lib/shopify"
+
+/** Products rendered per page. Keeps a large store from mounting 5,000 cards. */
+const PAGE_SIZE = 60
+
+export const ScraperClient = () => {
+  const { sites, addSite, removeSite } = useSavedSites()
+  const scrape = useStoreScrape()
+  const searchParams = useSearchParams()
+
+  const [filters, setFilters] = React.useState(EMPTY_FILTERS)
+  const [query, setQuery] = React.useState("")
+  const [visibleCount, setVisibleCount] = React.useState(PAGE_SIZE)
+
+  const { domain, products, status, error, truncated, load } = scrape
+
+  // A `?domain=` link from the home page loads that store on arrival. Keyed on
+  // the raw param so a user can paste a different domain into the URL and have
+  // it picked up, and refetched only when the value actually changes.
+  const requestedDomain = searchParams.get("domain")
+
+  React.useEffect(() => {
+    if (!requestedDomain) return
+
+    void load(requestedDomain)
+  }, [requestedDomain, load])
+
+  const visibleProducts = React.useMemo<ShopifyProduct[]>(() => {
+    const searched = searchProducts(products, query)
+    const filtered = applyFilters(searched, filters)
+
+    return filtered
+  }, [products, query, filters])
+
+  const visible = visibleProducts.slice(0, visibleCount)
+  const hasMore = visibleProducts.length > visibleCount
+
+  /*
+    Reset the page window whenever the inputs behind the result set change.
+    Done during render rather than in an effect, following React's documented
+    "adjust state when props change" pattern: an effect would commit one frame
+    with the previous window, briefly showing far more products than intended.
+  */
+  const resultKey = [
+    products.length,
+    query,
+    filters.vendors.join(","),
+    filters.productTypes.join(","),
+    filters.tags.join(","),
+    filters.priceRanges.join(","),
+  ].join("|")
+
+  const [previousResultKey, setPreviousResultKey] = React.useState(resultKey)
+
+  if (previousResultKey !== resultKey) {
+    setPreviousResultKey(resultKey)
+    setVisibleCount(PAGE_SIZE)
+  }
+
+  const handleSelectSite = React.useCallback(
+    async (nextDomain: string) => {
+      setFilters(EMPTY_FILTERS)
+      setQuery("")
+      await load(nextDomain)
+    },
+    [load]
+  )
+
+  const handleSubmitDomain = React.useCallback(
+    async (rawInput: string) => {
+      const savedDomain = await load(rawInput)
+
+      // Save the canonical domain the server returned, never the raw input.
+      // This is what prevents "https://www.x.com" and "x.com" landing in the
+      // list as two separate entries.
+      if (savedDomain) addSite(savedDomain)
+    },
+    [addSite, load]
+  )
+
+  const handleRemoveSite = React.useCallback(
+    (removedDomain: string) => {
+      removeSite(removedDomain)
+
+      if (domain === removedDomain) scrape.reset()
+    },
+    [domain, removeSite, scrape]
+  )
+
+  const handleClearFilters = React.useCallback(() => {
+    setFilters(EMPTY_FILTERS)
+    setQuery("")
+  }, [])
+
+  const isLoading = status === "loading"
+  const hasProducts = products.length > 0
+  const showResults = !isLoading && hasProducts && visibleProducts.length > 0
+  const showNoMatches =
+    !isLoading && hasProducts && visibleProducts.length === 0
+
+  return (
+    <SidebarProvider>
+      <FilterSidebar
+        products={products}
+        filters={filters}
+        onFiltersChange={setFilters}
+      />
+
+      <SidebarInset>
+        <div className="flex min-h-svh flex-col">
+          <SiteHeader parent={domain ?? undefined} />
+
+          <div className="border-b bg-background">
+            <div className="mx-auto w-full max-w-7xl px-4 py-4 sm:px-6">
+              <div className="flex items-start gap-2">
+                <SidebarTrigger className="mt-0.5 shrink-0" />
+
+                <div className="min-w-0 flex-1">
+                  <SitePicker
+                    sites={sites}
+                    selectedDomain={domain}
+                    status={status}
+                    inputError={status === "error" ? error : null}
+                    onSelect={handleSelectSite}
+                    onSubmitDomain={handleSubmitDomain}
+                    onRemoveSite={handleRemoveSite}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6">
+            {error && status === "error" && (
+              <Alert variant="destructive" className="mb-6">
+                <AlertCircleIcon aria-hidden="true" />
+                <AlertTitle>Could not load this store</AlertTitle>
+                <AlertDescription className="text-pretty">
+                  {error}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {truncated && (
+              <Alert className="mb-6">
+                <AlertTitle>Showing a partial catalogue</AlertTitle>
+                <AlertDescription className="text-pretty">
+                  This store has more products than one scrape can reach. The
+                  counts below are a lower bound.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {hasProducts && (
+              <div className="mb-6 flex flex-col gap-3">
+                <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                  <h2 className="text-base font-medium">
+                    {visibleProducts.length.toLocaleString()}{" "}
+                    {visibleProducts.length === 1 ? "product" : "products"}
+                    {domain && (
+                      <span className="font-normal text-muted-foreground">
+                        {" "}
+                        from {domain}
+                      </span>
+                    )}
+                  </h2>
+
+                  {products.length !== visibleProducts.length && (
+                    <p className="text-sm tabular-nums text-muted-foreground">
+                      {products.length.toLocaleString()} loaded
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="relative min-w-0 flex-1 sm:max-w-xs">
+                    <SearchIcon
+                      aria-hidden="true"
+                      className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
+                    />
+                    <Input
+                      type="search"
+                      value={query}
+                      onChange={(event) => setQuery(event.target.value)}
+                      placeholder="Search products"
+                      aria-label="Search loaded products"
+                      className="pl-8"
+                    />
+                  </div>
+
+                  {query && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setQuery("")}
+                      className="gap-1"
+                    >
+                      <XIcon aria-hidden="true" />
+                      Clear search
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {isLoading && <ProductGridSkeleton />}
+
+            {showResults && (
+              <>
+                <ProductList products={visible} domain={domain ?? ""} />
+
+                {hasMore && (
+                  <div className="mt-8 flex flex-col items-center gap-3">
+                    <p className="text-sm tabular-nums text-muted-foreground">
+                      Showing {visible.length.toLocaleString()} of{" "}
+                      {visibleProducts.length.toLocaleString()}
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() =>
+                        setVisibleCount((count) => count + PAGE_SIZE)
+                      }
+                    >
+                      Load{" "}
+                      {Math.min(
+                        PAGE_SIZE,
+                        visibleProducts.length - visibleCount
+                      ).toLocaleString()}{" "}
+                      more
+                    </Button>
+                  </div>
+                )}
+              </>
+            )}
+
+            {showNoMatches && (
+              <Empty className="border">
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <SearchIcon aria-hidden="true" />
+                  </EmptyMedia>
+                  <EmptyTitle>No products match</EmptyTitle>
+                  <EmptyDescription>
+                    {products.length.toLocaleString()}{" "}
+                    {products.length === 1 ? "product" : "products"} loaded,
+                    none matching the current filters.
+                  </EmptyDescription>
+                </EmptyHeader>
+                <EmptyContent>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleClearFilters}
+                  >
+                    Clear filters and search
+                  </Button>
+                </EmptyContent>
+              </Empty>
+            )}
+
+            {!hasProducts && !isLoading && status === "idle" && (
+              <Empty className="border">
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <SearchIcon aria-hidden="true" />
+                  </EmptyMedia>
+                  <EmptyTitle>No store loaded</EmptyTitle>
+                  <EmptyDescription>
+                    Enter a Shopify storefront above to pull its full product
+                    catalogue. Nothing is stored on our servers.
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            )}
+
+            {!hasProducts && !isLoading && status === "error" && (
+              <Empty className="border">
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <AlertCircleIcon aria-hidden="true" />
+                  </EmptyMedia>
+                  <EmptyTitle>Nothing to show yet</EmptyTitle>
+                  <EmptyDescription>
+                    Check the domain and try again. Some stores block automated
+                    requests entirely, which we cannot work around.
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            )}
+          </main>
+        </div>
+      </SidebarInset>
+    </SidebarProvider>
+  )
+}
