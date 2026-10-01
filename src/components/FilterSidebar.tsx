@@ -16,7 +16,12 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
-import { Sidebar, SidebarContent, SidebarHeader } from "@/components/ui/sidebar"
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarHeader,
+  SidebarTrigger,
+} from "@/components/ui/sidebar"
 import {
   buildFilterOptions,
   countActiveFilters,
@@ -226,6 +231,12 @@ export const FilterSidebar = ({
   return (
     <Sidebar className="bg-sidebar" aria-label="Filters">
       <SidebarHeader className="px-4 py-4">
+        {/*
+          The trigger lives in the sidebar it controls, not in the page toolbar.
+          Sitting it beside the domain input put an unrelated control in the
+          content column and broke the toolbar's alignment, and it meant the
+          thing you click to reach the filters was nowhere near the filters.
+        */}
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-sm font-medium">
             Filters
@@ -236,18 +247,22 @@ export const FilterSidebar = ({
             )}
           </h2>
 
-          {active && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={handleClear}
-              className="h-7 gap-1 px-2 text-xs"
-            >
-              <XIcon aria-hidden="true" />
-              Clear
-            </Button>
-          )}
+          <div className="flex items-center gap-1">
+            {active && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleClear}
+                className="h-7 gap-1 px-2 text-xs"
+              >
+                <XIcon aria-hidden="true" />
+                Clear
+              </Button>
+            )}
+
+            <SidebarTrigger className="size-7" aria-label="Hide filters" />
+          </div>
         </div>
       </SidebarHeader>
 

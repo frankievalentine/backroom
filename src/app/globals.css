@@ -2,7 +2,24 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-@custom-variant dark (&:is(.dark *));
+/*
+  Dark mode follows the operating system, so the `dark:` utilities and the token
+  block below are driven by the same single signal: `prefers-color-scheme`.
+
+  This deliberately replaces the previous `&:is(.dark *)` variant. That variant
+  only matched an element inside a `.dark` class, and nothing ever added the
+  class, so the entire dark palette was unreachable -- dark mode existed in the
+  file but could not be switched on by anything.
+
+  One mechanism, used in both places. If a manual override is ever wanted, add a
+  `.dark` class to <html> and widen both this variant and the token block to
+  honour it alongside the media query. Do not let the two drift apart.
+*/
+@custom-variant dark {
+  @media (prefers-color-scheme: dark) {
+    @slot;
+  }
+}
 
 @theme inline {
   --color-background: var(--background);
@@ -108,8 +125,18 @@
   --sidebar-ring: oklch(0.6 0 0);
 }
 
-.dark {
-  --background: oklch(0.145 0 0);
+/*
+  Dark palette. Attached to `:root` inside a `prefers-color-scheme` query rather
+  than to a `.dark` class, so the OS preference alone decides the theme and no
+  script has to run before the first paint. That also avoids a flash of the
+  wrong theme on load, which a class toggled after hydration would cause.
+
+  Note this is a reversal of the light palette, not an independent set: contrast
+  was re-measured for every pair after the change.
+*/
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
   --card-foreground: oklch(0.985 0 0);
@@ -142,6 +169,7 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+  }
 }
 
 @layer base {

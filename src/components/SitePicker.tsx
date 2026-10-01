@@ -97,7 +97,13 @@ export const SitePicker = ({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex w-full items-start gap-2">
+    // Capped: a domain field stretched across a wide viewport reads as a search
+    // box and invites the wrong kind of input. The saved-stores trigger sits
+    // beside it, right-aligned, so the pair stays together on one line.
+    <form
+      onSubmit={handleSubmit}
+      className="flex w-full max-w-2xl items-start gap-2"
+    >
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
         <label
           htmlFor="site-picker-input"

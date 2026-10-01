@@ -38,13 +38,19 @@ const ProductImage = ({ src, alt }: { src: string | null; alt: string }) => {
 
   if (!src || failedSrc === src) {
     return (
+      /*
+        The placeholder needs to read as an image slot rather than a hole in the
+        card. `bg-muted` sits only a shade away from `bg-card` in dark mode, so
+        the surface alone was invisible; the dashed inset draws the boundary and
+        the icon confirms what the area is for.
+      */
       <div
-        className="flex aspect-square w-full items-center justify-center bg-muted"
+        className="flex aspect-square w-full items-center justify-center border-b border-dashed border-border bg-muted/40"
         role="img"
         aria-label={alt}
       >
         <ImageOffIcon
-          className="size-8 text-muted-foreground"
+          className="size-6 text-muted-foreground/70"
           aria-hidden="true"
         />
       </div>
@@ -132,9 +138,19 @@ const ProductCard = ({
               {price}
             </span>
 
-            {variant?.compare_at_price && (
+            {/*
+              Only when the compare-at price is genuinely higher. Stores
+              routinely leave `compare_at_price` populated at the same value as
+              the price, and striking through an identical figure advertises a
+              discount that does not exist. `getDiscountPercent` already encodes
+              that rule and returns null for equal or inverted prices, so it
+              gates the whole treatment, badge included.
+            */}
+            {discount !== null && (
               <span className="text-xs text-muted-foreground line-through tabular-nums">
-                {formatPrice(Number.parseFloat(variant.compare_at_price))}
+                {formatPrice(
+                  Number.parseFloat(variant?.compare_at_price ?? "")
+                )}
               </span>
             )}
           </p>

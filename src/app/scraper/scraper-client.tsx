@@ -18,11 +18,7 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty"
 import { Input } from "@/components/ui/input"
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar"
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { useSavedSites } from "@/hooks/use-saved-sites"
 import { useStoreScrape } from "@/hooks/use-store-scrape"
 import { applyFilters, EMPTY_FILTERS, searchProducts } from "@/lib/filters"
@@ -160,23 +156,23 @@ export const ScraperClient = ({ initialDomain }: ScraperClientProps) => {
           <SkipLink targetId={MAIN_CONTENT_ID} />
           <SiteHeader parent={domain ?? undefined} />
 
+          {/*
+            Toolbar. The filter trigger is not here: it lives in the sidebar it
+            controls, which keeps this row to the one control that belongs to it
+            and lets the field start on the content edge rather than being pushed
+            in by an unrelated button.
+          */}
           <div className="border-b bg-background">
-            <div className="mx-auto w-full max-w-7xl px-4 py-4 sm:px-6">
-              <div className="flex items-start gap-2">
-                <SidebarTrigger className="mt-0.5 shrink-0" />
-
-                <div className="min-w-0 flex-1">
-                  <SitePicker
-                    sites={sites}
-                    selectedDomain={domain}
-                    status={status}
-                    inputError={status === "error" ? error : null}
-                    onSelect={handleSelectSite}
-                    onSubmitDomain={handleSubmitDomain}
-                    onRemoveSite={handleRemoveSite}
-                  />
-                </div>
-              </div>
+            <div className="mx-auto w-full max-w-7xl px-5 py-4 sm:px-8">
+              <SitePicker
+                sites={sites}
+                selectedDomain={domain}
+                status={status}
+                inputError={status === "error" ? error : null}
+                onSelect={handleSelectSite}
+                onSubmitDomain={handleSubmitDomain}
+                onRemoveSite={handleRemoveSite}
+              />
             </div>
           </div>
 
