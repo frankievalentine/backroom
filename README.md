@@ -78,11 +78,39 @@ Notable behaviours:
 ### Component library
 
 shadcn/ui on **Base UI** (`style: "base-nova"` in `components.json`). Radix was
-removed entirely. Add or update components with:
+removed entirely.
+
+**`src/components/ui/**` is vendored registry output. Never hand-edit it.**
+Those files are owned by shadcn and are replaced wholesale on the next
+`shadcn add`, so a local edit is at best noise and at worst a silent
+regression. Anything you need on top of a primitive goes in its own file under
+`src/components/`, composed from the installed primitives. That is also the
+pattern the shadcn docs use -- the sidebar docs, for example, show
+`components/app-sidebar.tsx` as a file you write that imports from
+`@/components/ui/sidebar`.
+
+The installed files differ from the raw registry payload in three ways, all
+applied by the CLI:
+
+| Registry ships | Installed as | Why |
+| --- | --- | --- |
+| `@/registry/base-nova/ui/button` | `@/components/ui/button` | Alias rewriting to the project |
+| `<IconPlaceholder lucide="ChevronLeftIcon" />` | `<ChevronLeftIcon />` | Resolves `iconLibrary: "lucide"` |
+| `import * as React` | `import type * as React` | Type-only import transform |
+
+So a local edit showing up as a diff against the registry JSON is expected; a
+local edit showing up as a diff against the *installed* file is not.
+
+Add or update components with:
 
 ```bash
 pnpm dlx shadcn@latest add <component>
 ```
+
+If a component needs behaviour the primitive cannot express, control it from a
+wrapper instead of patching the primitive. `FilterSidebar` does this for the
+sidebar's open state, because the registry's `SidebarProvider` writes a
+`sidebar_state` cookie but never reads it back.
 
 ### Configuration files
 
