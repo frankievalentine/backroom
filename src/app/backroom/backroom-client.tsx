@@ -30,7 +30,7 @@ import type { ShopifyProduct } from "@/lib/shopify"
 /** Products rendered per page. Keeps a large store from mounting 5,000 cards. */
 const PAGE_SIZE = 60
 
-const SIDEBAR_STATE_KEY = "product-scraper:sidebar-open"
+const SIDEBAR_STATE_KEY = "backroom:sidebar-open"
 
 /**
  * Persisted sidebar open/collapsed state.

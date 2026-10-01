@@ -61,7 +61,7 @@ export const detectWebsiteType = async (
       signal: AbortSignal.timeout(DETECT_TIMEOUT_MS),
       headers: {
         accept: "text/html",
-        "user-agent": "ProductScraper/1.0 (+https://product-scraper.app)",
+        "user-agent": "Backroom/1.0 (+https://backroom.dev)",
       },
     })
 
