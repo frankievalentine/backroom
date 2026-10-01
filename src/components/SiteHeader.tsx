@@ -4,15 +4,19 @@ import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
 type SiteHeaderProps = {
-  /**
-   * Route context shown next to the wordmark, e.g. the loaded domain.
-   *
-   * Setting this also suppresses the default "Open scraper" call to action.
-   * That link is only meaningful on a page that is not the scraper; on
-   * `/scraper` it pointed at the page you were already on.
-   */
+  /** Route context shown next to the wordmark, e.g. the loaded domain. */
   parent?: string
-  /** Right-hand slot. Defaults to a link into the scraper when no `parent`. */
+  /**
+   * Set on the scraper route.
+   *
+   * The "Open scraper" call to action is suppressed here, because it would link
+   * the scraper page to itself. This has to be an explicit signal rather than
+   * inferred from `parent`: with no store loaded there is no parent either, and
+   * inferring from that left the self-link showing on exactly the page it should
+   * never appear on.
+   */
+  hideScraperLink?: boolean
+  /** Right-hand slot. Overrides the default call to action entirely. */
   children?: React.ReactNode
   className?: string
 }
@@ -26,10 +30,11 @@ type SiteHeaderProps = {
  */
 export const SiteHeader = ({
   parent,
+  hideScraperLink = false,
   children,
   className,
 }: SiteHeaderProps) => {
-  const showDefaultAction = children === undefined && !parent
+  const showDefaultAction = children === undefined && !hideScraperLink
 
   return (
     <header

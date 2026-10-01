@@ -97,22 +97,33 @@ export const SitePicker = ({
   }
 
   return (
-    // Capped: a domain field stretched across a wide viewport reads as a search
-    // box and invites the wrong kind of input. The saved-stores trigger sits
-    // beside it, right-aligned, so the pair stays together on one line.
-    <form
-      onSubmit={handleSubmit}
-      className="flex w-full max-w-2xl items-start gap-2"
-    >
-      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-        <label
-          htmlFor="site-picker-input"
-          className="text-xs font-medium text-muted-foreground"
-        >
-          {SITE_PICKER_LABEL}
-        </label>
+    /*
+      Capped: a domain field stretched across a wide viewport reads as a search
+      box and invites the wrong kind of input.
 
-        <InputGroup className="h-9">
+      The label is a full-width row of its own rather than the first child of the
+      field's column. It used to sit inside that column, so the `h-9` saved-stores
+      trigger -- a sibling of the column, not of the input -- lined up with the
+      label's top edge and floated a line above the input it belongs with. Putting
+      the label above both controls lets the field and the trigger share one row
+      and align on the same baseline.
+    */
+    <form onSubmit={handleSubmit} className="w-full max-w-2xl">
+      <label
+        htmlFor="site-picker-input"
+        className="mb-1.5 block text-xs font-medium text-muted-foreground"
+      >
+        {SITE_PICKER_LABEL}
+      </label>
+
+      {/*
+          Wraps rather than sits on one row. The saved-stores trigger is a fixed
+          width that cannot shrink, so on a narrow viewport it pushed the field
+          past the right edge. Letting it drop below keeps the domain input --
+          the primary control -- full width and still reachable.
+        */}
+      <div className="flex min-w-0 flex-1 flex-wrap items-start gap-2">
+        <InputGroup className="h-9 min-w-0 flex-1">
           <InputGroupInput
             id="site-picker-input"
             name="domain"
@@ -149,93 +160,96 @@ export const SitePicker = ({
           </InputGroupAddon>
         </InputGroup>
 
-        {error && (
-          <p
-            id="site-picker-error"
-            role="alert"
-            className="text-xs font-medium text-destructive"
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger
+            render={
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-9 shrink-0 gap-1.5"
+              />
+            }
           >
-            {error}
-          </p>
-        )}
+            <span className="tabular-nums">
+              {sites.length} saved {sites.length === 1 ? "store" : "stores"}
+            </span>
+            <ChevronDownIcon
+              className="size-3.5 opacity-60"
+              aria-hidden="true"
+            />
+          </PopoverTrigger>
+
+          <PopoverContent align="end" className="w-72 p-0">
+            {sites.length === 0 ? (
+              <Empty className="border-0 p-6">
+                <EmptyHeader>
+                  <EmptyTitle>No saved stores</EmptyTitle>
+                  <EmptyDescription>
+                    Enter a domain above to save it here for next time.
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            ) : (
+              <ul className="max-h-72 overflow-y-auto p-1">
+                {sites.map((site) => {
+                  const isSelected = site.domain === selectedDomain
+
+                  return (
+                    <li key={site.domain}>
+                      <div
+                        className={
+                          "flex items-center gap-1 rounded-md px-1 transition-colors hover:bg-accent has-[button:focus-visible]:ring-2 has-[button:focus-visible]:ring-ring has-[button:focus-visible]:ring-inset"
+                        }
+                        data-selected={isSelected ? "true" : undefined}
+                      >
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            onSelect(site.domain)
+                            setOpen(false)
+                          }}
+                          className="min-w-0 flex-1 justify-start font-normal"
+                        >
+                          <span className="truncate">{site.domain}</span>
+                          {isSelected && (
+                            <span className="ml-auto shrink-0 text-xs text-muted-foreground">
+                              Loaded
+                            </span>
+                          )}
+                        </Button>
+
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-xs"
+                          onClick={(event) => handleRemove(event, site.domain)}
+                          aria-label={`Remove ${site.domain} from saved stores`}
+                          className="shrink-0 text-muted-foreground hover:text-destructive"
+                        >
+                          <Trash2Icon aria-hidden="true" />
+                        </Button>
+                      </div>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </PopoverContent>
+        </Popover>
       </div>
 
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger
-          render={
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-9 shrink-0 gap-1.5"
-            />
-          }
+      {error && (
+        <p
+          id="site-picker-error"
+          role="alert"
+          className="mt-1.5 text-xs font-medium text-destructive"
         >
-          <span className="tabular-nums">
-            {sites.length} saved {sites.length === 1 ? "store" : "stores"}
-          </span>
-          <ChevronDownIcon className="size-3.5 opacity-60" aria-hidden="true" />
-        </PopoverTrigger>
-
-        <PopoverContent align="end" className="w-72 p-0">
-          {sites.length === 0 ? (
-            <Empty className="border-0 p-6">
-              <EmptyHeader>
-                <EmptyTitle>No saved stores</EmptyTitle>
-                <EmptyDescription>
-                  Enter a domain above to save it here for next time.
-                </EmptyDescription>
-              </EmptyHeader>
-            </Empty>
-          ) : (
-            <ul className="max-h-72 overflow-y-auto p-1">
-              {sites.map((site) => {
-                const isSelected = site.domain === selectedDomain
-
-                return (
-                  <li key={site.domain}>
-                    <div
-                      className={
-                        "flex items-center gap-1 rounded-md px-1 transition-colors hover:bg-accent has-[button:focus-visible]:ring-2 has-[button:focus-visible]:ring-ring has-[button:focus-visible]:ring-inset"
-                      }
-                      data-selected={isSelected ? "true" : undefined}
-                    >
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          onSelect(site.domain)
-                          setOpen(false)
-                        }}
-                        className="min-w-0 flex-1 justify-start font-normal"
-                      >
-                        <span className="truncate">{site.domain}</span>
-                        {isSelected && (
-                          <span className="ml-auto shrink-0 text-xs text-muted-foreground">
-                            Loaded
-                          </span>
-                        )}
-                      </Button>
-
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-xs"
-                        onClick={(event) => handleRemove(event, site.domain)}
-                        aria-label={`Remove ${site.domain} from saved stores`}
-                        className="shrink-0 text-muted-foreground hover:text-destructive"
-                      >
-                        <Trash2Icon aria-hidden="true" />
-                      </Button>
-                    </div>
-                  </li>
-                )
-              })}
-            </ul>
-          )}
-        </PopoverContent>
-      </Popover>
+          {error}
+        </p>
+      )}
     </form>
   )
 }

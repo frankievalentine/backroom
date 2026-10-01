@@ -7,6 +7,7 @@ import {
   TagIcon,
   XIcon,
 } from "lucide-react"
+import Link from "next/link"
 import * as React from "react"
 
 import { Badge } from "@/components/ui/badge"
@@ -20,7 +21,11 @@ import {
   Sidebar,
   SidebarContent,
   SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
   SidebarTrigger,
+  useSidebar,
 } from "@/components/ui/sidebar"
 import {
   buildFilterOptions,
@@ -39,6 +44,50 @@ type FilterSidebarProps = {
   products: ShopifyProduct[]
   filters: Filters
   onFiltersChange: (filters: Filters) => void
+}
+
+const FACET_ICONS = [
+  { title: "Vendors", icon: Building2Icon },
+  { title: "Product types", icon: PackageIcon },
+  { title: "Price", icon: DollarSignIcon },
+  { title: "Tags", icon: TagIcon },
+] as const
+
+/**
+ * Rail navigation, shown only when the sidebar is collapsed to icons.
+ *
+ * A 3rem rail cannot show checkbox lists, so the full facets are hidden via
+ * `group-data-[collapsible=icon]:hidden` and replaced by one icon per facet.
+ * Each icon carries a tooltip naming its facet, and activates by expanding the
+ * sidebar so the list itself is usable rather than hiding it behind a hover.
+ */
+const CollapsedFacetNav = () => {
+  const { setOpen, isMobile } = useSidebar()
+
+  const handleExpand = () => {
+    // On mobile the sidebar is a Sheet with its own open state, and these
+    // buttons only render in the desktop rail.
+    if (isMobile) return
+
+    setOpen(true)
+  }
+
+  return (
+    <SidebarMenu className="hidden group-data-[collapsible=icon]:flex">
+      {FACET_ICONS.map(({ title, icon: Icon }) => (
+        <SidebarMenuItem key={title}>
+          <SidebarMenuButton
+            tooltip={title}
+            onClick={handleExpand}
+            className="justify-center"
+          >
+            <Icon aria-hidden="true" />
+            <span>{title}</span>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      ))}
+    </SidebarMenu>
+  )
 }
 
 /** Rows rendered before the "Show all" control appears. */
@@ -180,6 +229,111 @@ const FacetSection = ({
   )
 }
 
+/**
+ * Wordmark for the scraper route.
+ *
+ * This route deliberately has no top navbar, so the product identity lives in
+ * the sidebar. That also makes it the only route home on mobile, where the
+ * sidebar is a Sheet with no other navigation in it.
+ */
+const SidebarWordmark = () => (
+  <Link
+    href="/"
+    className="flex min-w-0 flex-1 items-center gap-2 rounded-md text-sm font-semibold tracking-tight group-data-[collapsible=icon]:hidden"
+  >
+    <span
+      aria-hidden="true"
+      className="grid size-6 shrink-0 place-items-center rounded-md bg-primary text-[0.625rem] font-bold text-primary-foreground"
+    >
+      PS
+    </span>
+    <span className="truncate group-data-[collapsible=icon]:sr-only">
+      Product Scraper
+    </span>
+  </Link>
+)
+
+type SidebarHeaderBlockProps = {
+  active: boolean
+  activeCount: number
+  onClear: () => void
+  /** Rendered only once a store is loaded, when there is something to clear. */
+  showClear: boolean
+}
+
+/**
+ * The sidebar's two header rows, shared by both states.
+ *
+ * The collapse trigger sits on the identity row, to the right of the wordmark,
+ * because that is what it acts on: the whole panel. Sitting it beside the
+ * "Filters" label made it read as a control over the filters alone.
+ *
+ * A separator divides the identity row from the filter controls, which are a
+ * separate group with their own heading. Both rows bleed to the sidebar edges
+ * and carry their own inline padding, so the divider spans the full width while
+ * the text stays inside the margins.
+ */
+const SidebarHeaderBlock = ({
+  active,
+  activeCount,
+  onClear,
+  showClear,
+}: SidebarHeaderBlockProps) => (
+  <SidebarHeader className="gap-0 p-0">
+    {/*
+      A 3rem rail has about 16px of content width once the inline padding is
+      taken, which is not enough for a wordmark badge and a 28px trigger side by
+      side -- they overlapped. So when collapsed the wordmark gives way entirely
+      and the trigger becomes the single, centred control that expands the rail.
+    */}
+    <div className="flex items-center gap-2 px-4 py-3 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
+      <SidebarWordmark />
+
+      {/*
+        Desktop only. Below `md` this sidebar is a Sheet that only mounts once
+        open, so a trigger inside it could never be clicked and the filters
+        would be unreachable. The toolbar renders the mobile equivalent, so
+        exactly one of the two is present at any width.
+      */}
+      <SidebarTrigger
+        className="hidden size-7 shrink-0 md:inline-flex"
+        aria-label="Hide filters"
+      />
+    </div>
+
+    <Separator />
+
+    <div className="flex items-center justify-between gap-2 px-4 py-3">
+      {/*
+        Kept in the accessibility tree when collapsed via `sr-only` rather than
+        hidden outright: the rail still belongs to a labelled region, and
+        dropping the heading would leave the panel unnamed.
+      */}
+      <h2 className="text-sm font-medium group-data-[collapsible=icon]:sr-only">
+        Filters
+        {active && (
+          <span className="ml-2 text-xs font-normal tabular-nums text-muted-foreground">
+            {activeCount} active
+          </span>
+        )}
+      </h2>
+
+      {showClear && active && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={onClear}
+          className="h-7 gap-1 px-2 text-xs group-data-[collapsible=icon]:hidden"
+        >
+          <XIcon aria-hidden="true" />
+          Clear
+        </Button>
+      )}
+    </div>
+  </SidebarHeader>
+)
+
 export const FilterSidebar = ({
   products,
   filters,
@@ -215,12 +369,16 @@ export const FilterSidebar = ({
 
   if (products.length === 0) {
     return (
-      <Sidebar className="bg-sidebar" aria-label="Filters">
-        <SidebarHeader className="px-4 py-4">
-          <h2 className="text-sm font-medium">Filters</h2>
-        </SidebarHeader>
+      <Sidebar collapsible="icon" className="bg-sidebar" aria-label="Filters">
+        <SidebarHeaderBlock
+          active={active}
+          activeCount={activeCount}
+          onClear={handleClear}
+          showClear={false}
+        />
+
         <SidebarContent>
-          <p className="px-4 text-sm text-muted-foreground">
+          <p className="px-4 text-sm text-muted-foreground group-data-[collapsible=icon]:hidden">
             Filters appear once a store is loaded.
           </p>
         </SidebarContent>
@@ -229,45 +387,24 @@ export const FilterSidebar = ({
   }
 
   return (
-    <Sidebar className="bg-sidebar" aria-label="Filters">
-      <SidebarHeader className="px-4 py-4">
-        {/*
-          The trigger lives in the sidebar it controls, not in the page toolbar.
-          Sitting it beside the domain input put an unrelated control in the
-          content column and broke the toolbar's alignment, and it meant the
-          thing you click to reach the filters was nowhere near the filters.
-        */}
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="text-sm font-medium">
-            Filters
-            {active && (
-              <span className="ml-2 text-xs font-normal tabular-nums text-muted-foreground">
-                {activeCount} active
-              </span>
-            )}
-          </h2>
-
-          <div className="flex items-center gap-1">
-            {active && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={handleClear}
-                className="h-7 gap-1 px-2 text-xs"
-              >
-                <XIcon aria-hidden="true" />
-                Clear
-              </Button>
-            )}
-
-            <SidebarTrigger className="size-7" aria-label="Hide filters" />
-          </div>
-        </div>
-      </SidebarHeader>
+    <Sidebar collapsible="icon" className="bg-sidebar" aria-label="Filters">
+      <SidebarHeaderBlock
+        active={active}
+        activeCount={activeCount}
+        onClear={handleClear}
+        showClear
+      />
 
       <SidebarContent>
-        <ScrollArea className="flex-1">
+        {/*
+          Rail navigation replaces the full facet lists while collapsed. Both are
+          rendered and toggled with `group-data-[collapsible=icon]`, which the
+          docs recommend over a JS conditional: the sidebar's own state drives
+          the visibility, so the two can never disagree.
+        */}
+        <CollapsedFacetNav />
+
+        <ScrollArea className="flex-1 group-data-[collapsible=icon]:hidden">
           <div className="space-y-6 px-4 py-1 pb-8">
             <FacetSection
               icon={<Building2Icon className="size-4" />}

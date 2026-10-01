@@ -4,7 +4,6 @@ import { AlertCircleIcon, SearchIcon, XIcon } from "lucide-react"
 import * as React from "react"
 import { FilterSidebar } from "@/components/FilterSidebar"
 import { ProductGridSkeleton, ProductList } from "@/components/ProductList"
-import { SiteHeader } from "@/components/SiteHeader"
 import { SitePicker } from "@/components/SitePicker"
 import { SkipLink } from "@/components/SkipLink"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -18,7 +17,11 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty"
 import { Input } from "@/components/ui/input"
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
+import {
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar"
 import { useSavedSites } from "@/hooks/use-saved-sites"
 import { useStoreScrape } from "@/hooks/use-store-scrape"
 import { applyFilters, EMPTY_FILTERS, searchProducts } from "@/lib/filters"
@@ -26,6 +29,46 @@ import type { ShopifyProduct } from "@/lib/shopify"
 
 /** Products rendered per page. Keeps a large store from mounting 5,000 cards. */
 const PAGE_SIZE = 60
+
+const SIDEBAR_STATE_KEY = "product-scraper:sidebar-open"
+
+/**
+ * Persisted sidebar open/collapsed state.
+ *
+ * The registry's SidebarProvider writes a `sidebar_state` cookie but never reads
+ * it back, so the initial state comes only from `defaultOpen` and a collapse does
+ * not survive a reload. Controlling the provider from here fixes that without
+ * editing the vendored component, which `shadcn add` would overwrite anyway.
+ *
+ * `null` means "not yet read". Rendering stays uncontrolled until the stored
+ * value is known, because reading localStorage during the first render would
+ * mismatch the server-rendered markup.
+ */
+const usePersistedSidebar = () => {
+  const [open, setOpen] = React.useState<boolean | null>(null)
+
+  React.useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(SIDEBAR_STATE_KEY)
+
+      if (stored !== null) setOpen(stored === "true")
+    } catch {
+      // Unavailable storage: fall back to the provider's own default.
+    }
+  }, [])
+
+  const handleOpenChange = React.useCallback((next: boolean) => {
+    setOpen(next)
+
+    try {
+      window.localStorage.setItem(SIDEBAR_STATE_KEY, String(next))
+    } catch {
+      // See above.
+    }
+  }, [])
+
+  return { open, handleOpenChange }
+}
 
 /** Shared by the skip link and the landmark it targets. */
 const MAIN_CONTENT_ID = "main-content"
@@ -38,6 +81,8 @@ type ScraperClientProps = {
 export const ScraperClient = ({ initialDomain }: ScraperClientProps) => {
   const { sites, addSite, removeSite } = useSavedSites()
   const scrape = useStoreScrape()
+  const { open: sidebarOpen, handleOpenChange: handleSidebarOpenChange } =
+    usePersistedSidebar()
 
   const [filters, setFilters] = React.useState(EMPTY_FILTERS)
   const [query, setQuery] = React.useState("")
@@ -129,7 +174,10 @@ export const ScraperClient = ({ initialDomain }: ScraperClientProps) => {
     !isLoading && hasProducts && visibleProducts.length === 0
 
   return (
-    <SidebarProvider>
+    <SidebarProvider
+      open={sidebarOpen ?? undefined}
+      onOpenChange={handleSidebarOpenChange}
+    >
       {/*
         One `<h1>` per route, always present and always first in DOM order, so a
         reader navigating by heading meets the page title before the sidebar's
@@ -154,25 +202,37 @@ export const ScraperClient = ({ initialDomain }: ScraperClientProps) => {
       <SidebarInset id={MAIN_CONTENT_ID}>
         <div className="flex min-h-svh flex-col">
           <SkipLink targetId={MAIN_CONTENT_ID} />
-          <SiteHeader parent={domain ?? undefined} />
 
           {/*
-            Toolbar. The filter trigger is not here: it lives in the sidebar it
-            controls, which keeps this row to the one control that belongs to it
-            and lets the field start on the content edge rather than being pushed
-            in by an unrelated button.
+            No navbar on this route. The wordmark lives in the sidebar header
+            instead, so the tool gets the full height for its own content rather
+            than sharing the top of the screen with a header that only repeated
+            the home page.
+
+            Toolbar. The filter trigger is here rather than in the sidebar for
+            one concrete reason: on mobile the sidebar is a Sheet that only
+            mounts once open, so a trigger inside it could never be reached.
+            Below `md` the sidebar trigger is hidden and this one is the only
+            way to the filters.
           */}
           <div className="border-b bg-background">
-            <div className="mx-auto w-full max-w-7xl px-5 py-4 sm:px-8">
-              <SitePicker
-                sites={sites}
-                selectedDomain={domain}
-                status={status}
-                inputError={status === "error" ? error : null}
-                onSelect={handleSelectSite}
-                onSubmitDomain={handleSubmitDomain}
-                onRemoveSite={handleRemoveSite}
+            <div className="mx-auto flex w-full max-w-7xl items-start gap-3 px-5 py-4 sm:px-8">
+              <SidebarTrigger
+                className="mt-0.5 shrink-0 md:hidden"
+                aria-label="Show filters"
               />
+
+              <div className="min-w-0 flex-1">
+                <SitePicker
+                  sites={sites}
+                  selectedDomain={domain}
+                  status={status}
+                  inputError={status === "error" ? error : null}
+                  onSelect={handleSelectSite}
+                  onSubmitDomain={handleSubmitDomain}
+                  onRemoveSite={handleRemoveSite}
+                />
+              </div>
             </div>
           </div>
 
