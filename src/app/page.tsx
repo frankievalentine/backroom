@@ -1,65 +1,214 @@
-import Image from "next/image";
+'use client';
+
+import { useState, useEffect } from 'react';
+import { SidebarProvider, SidebarTrigger, SidebarInset } from '@/components/ui/sidebar';
+import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import Navbar from '@/components/Navbar';
+import ProductList from '@/components/ProductList';
+import FilterSidebar from '@/components/FilterSidebar';
+import { AlertCircle } from 'lucide-react';
+
+interface ShopifyProduct {
+  id: number;
+  title: string;
+  handle: string;
+  vendor: string;
+  product_type: string;
+  created_at: string;
+  updated_at: string;
+  published_at: string;
+  tags: string;
+  variants: Array<{
+    id: number;
+    title: string;
+    price: string;
+    sku: string;
+    compare_at_price: string | null;
+  }>;
+  images: Array<{
+    id: number;
+    src: string;
+    alt: string | null;
+    width: number;
+    height: number;
+  }>;
+  image: {
+    id: number;
+    src: string;
+    alt: string | null;
+    width: number;
+    height: number;
+  };
+}
+
+interface Filters {
+  vendors: string[];
+  productTypes: string[];
+  tags: string[];
+  priceRanges: string[];
+}
 
 export default function Home() {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+  const [websites, setWebsites] = useState<string[]>([]);
+  const [selectedWebsite, setSelectedWebsite] = useState<string>('');
+  const [products, setProducts] = useState<ShopifyProduct[]>([]);
+  const [filteredProducts, setFilteredProducts] = useState<ShopifyProduct[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string>('');
+
+  const fetchProducts = async (domain: string) => {
+    setLoading(true);
+    setError('');
+    
+    try {
+      const response = await fetch('/api/scrape', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ domain }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch products');
+      }
+
+      const data = await response.json();
+      setProducts(data.products || []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+      setProducts([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleWebsiteChange = (website: string) => {
+    setSelectedWebsite(website);
+    if (website) {
+      fetchProducts(website);
+    } else {
+      setProducts([]);
+    }
+  };
+
+  const handleAddWebsite = (website: string) => {
+    if (!websites.includes(website)) {
+      setWebsites([...websites, website]);
+    }
+    setSelectedWebsite(website);
+    fetchProducts(website);
+  };
+
+  const handleDeleteWebsite = (website: string) => {
+    setWebsites(websites.filter(w => w !== website));
+    if (selectedWebsite === website) {
+      setSelectedWebsite('');
+      setProducts([]);
+      setFilteredProducts([]);
+    }
+  };
+
+  const handleFiltersChange = (filters: Filters) => {
+    let filtered = [...products];
+
+    // Filter by vendors
+    if (filters.vendors.length > 0) {
+      filtered = filtered.filter((product) =>
+        filters.vendors.includes(product.vendor)
+      );
+    }
+
+    // Filter by product types
+    if (filters.productTypes.length > 0) {
+      filtered = filtered.filter((product) =>
+        filters.productTypes.includes(product.product_type)
+      );
+    }
+
+    // Filter by tags
+    if (filters.tags.length > 0) {
+      filtered = filtered.filter((product) => {
+        if (!product.tags || typeof product.tags !== 'string') return false;
+        const productTags = product.tags.split(',').map((tag) => tag.trim());
+        return filters.tags.some((tag) => productTags.includes(tag));
+      });
+    }
+
+    // Filter by price ranges
+    if (filters.priceRanges.length > 0) {
+      filtered = filtered.filter((product) => {
+        return product.variants.some((variant) => {
+          const price = parseFloat(variant.price);
+          if (isNaN(price)) return false;
+
+          return filters.priceRanges.some((rangeLabel) => {
+            if (rangeLabel === 'Under $25') return price < 25;
+            if (rangeLabel === '$25 - $50') return price >= 25 && price < 50;
+            if (rangeLabel === '$50 - $100') return price >= 50 && price < 100;
+            if (rangeLabel === '$100 - $200') return price >= 100 && price < 200;
+            if (rangeLabel === 'Over $200') return price >= 200;
+            return false;
+          });
+        });
+      });
+    }
+
+    setFilteredProducts(filtered);
+  };
+
+  useEffect(() => {
+    setFilteredProducts(products);
+  }, [products]);
+
+return (
+    <SidebarProvider defaultOpen={true}>
+      <FilterSidebar
+        products={products}
+        onFiltersChange={handleFiltersChange}
+      />
+      
+      <SidebarInset>
+        <div className="flex flex-col min-h-screen bg-white dark:bg-gray-950">
+          <Navbar
+            selectedWebsite={selectedWebsite}
+            onWebsiteChange={handleWebsiteChange}
+            onAddWebsite={handleAddWebsite}
+            onDeleteWebsite={handleDeleteWebsite}
+            websites={websites}
+          />
+          
+          <main className="flex-1 p-6 2xl:p-8">
+            <div className="max-w-7xl 2xl:max-w-screen-2xl mx-auto">
+              {error && (
+                <Alert variant="destructive" className="mb-6">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+              
+              <div className="mb-6">
+                <h1 className="text-2xl font-bold">
+                  {selectedWebsite ? `Products from ${selectedWebsite}` : 'Select a website to view products'}
+                </h1>
+                {selectedWebsite && (
+                  <p className="text-muted-foreground mt-1">
+                    Showing {filteredProducts.length} of {products.length} products
+                  </p>
+                )}
+              </div>
+              
+              <ProductList
+                products={filteredProducts}
+                loading={loading}
+                selectedWebsite={selectedWebsite}
+              />
+            </div>
+          </main>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }
