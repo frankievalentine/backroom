@@ -38,15 +38,18 @@ import {
   AVAILABILITY_FILTER_LABEL,
   buildFilterOptions,
   countActiveFilters,
+  describeRedundantFacet,
   EMPTY_FILTERS,
   type FacetRemovers,
   type FilterOption,
   type FilterOptions,
   type Filters,
   hasActiveFilters as filtersAreActive,
+  findRedundantFacets,
   getAppliedChips,
   PRICE_RANGES,
   type PriceRangeId,
+  type RedundantFacet,
   toggleValue,
 } from "@/lib/filters"
 import { isSoldOut, type ShopifyProduct } from "@/lib/shopify"
@@ -379,6 +382,13 @@ type FacetSectionProps = {
   emptyMessage: string
   /** Hides the heading when the surrounding surface already provides one. */
   hideHeading?: boolean
+  /**
+   * Why this facet cannot narrow results, shown instead of the checkbox list.
+   *
+   * Without it a store that publishes one vendor, or no tags at all, silently
+   * drops a heading and leaves the user wondering whether the filter exists.
+   */
+  redundantNote?: string
 }
 
 /**
@@ -397,6 +407,7 @@ const FacetSection = ({
   searchPlaceholder,
   emptyMessage,
   hideHeading = false,
+  redundantNote,
 }: FacetSectionProps) => {
   const [query, setQuery] = React.useState("")
   const [expanded, setExpanded] = React.useState(false)
@@ -431,6 +442,7 @@ const FacetSection = ({
       aria-labelledby={hideHeading ? undefined : headingId}
       aria-label={hideHeading ? title : undefined}
       className="space-y-2"
+      data-redundant={redundantNote ? "true" : undefined}
     >
       {!hideHeading && (
         <div className="flex items-center gap-2">
@@ -451,62 +463,74 @@ const FacetSection = ({
         </div>
       )}
 
-      {options.length > PREVIEW_COUNT && (
-        <Input
-          type="search"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder={searchPlaceholder}
-          aria-label={`Filter ${title.toLowerCase()} options`}
-          className="h-8"
-        />
-      )}
-
-      {shown.length === 0 ? (
-        <p className="text-xs text-muted-foreground">{emptyMessage}</p>
+      {/*
+        A redundant facet keeps its heading and states why it is inert, rather
+        than returning null. Silently dropping it makes the filter look
+        unavailable instead of inapplicable, which is the more confusing
+        reading. Search and the option list are both suppressed.
+      */}
+      {redundantNote ? (
+        <p className="text-xs text-muted-foreground">{redundantNote}</p>
       ) : (
-        <ul className="space-y-0.5">
-          {shown.map((option) => {
-            const id = `${slugify(title)}-${option.value}`
+        <>
+          {options.length > PREVIEW_COUNT && (
+            <Input
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder={searchPlaceholder}
+              aria-label={`Filter ${title.toLowerCase()} options`}
+              className="h-8"
+            />
+          )}
 
-            return (
-              <li key={option.value}>
-                <div className="flex items-center gap-2 rounded-md px-1 py-1 hover:bg-accent has-[[data-slot=checkbox]:focus-visible]:ring-2 has-[[data-slot=checkbox]:focus-visible]:ring-ring has-[[data-slot=checkbox]:focus-visible]:ring-inset">
-                  <Checkbox
-                    // See FacetRow: `nativeButton` is what makes the sibling
-                    // `<label for>` association work at all.
-                    nativeButton
-                    render={<button type="button" />}
-                    id={id}
-                    checked={selected.includes(option.value)}
-                    onCheckedChange={() => onToggle(option.value)}
-                  />
-                  <Label
-                    htmlFor={id}
-                    className="min-w-0 flex-1 cursor-pointer truncate font-normal"
-                  >
-                    {option.value}
-                  </Label>
-                  <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-                    {option.count}
-                  </span>
-                </div>
-              </li>
-            )
-          })}
-        </ul>
-      )}
+          {shown.length === 0 ? (
+            <p className="text-xs text-muted-foreground">{emptyMessage}</p>
+          ) : (
+            <ul className="space-y-0.5">
+              {shown.map((option) => {
+                const id = `${slugify(title)}-${option.value}`
 
-      {canExpand && (
-        <Button
-          type="button"
-          variant="link"
-          size="sm"
-          onClick={() => setExpanded((value) => !value)}
-          className="h-auto px-1 py-0.5 text-xs"
-        >
-          {expanded ? "Show fewer" : `Show all ${visible.length}`}
-        </Button>
+                return (
+                  <li key={option.value}>
+                    <div className="flex items-center gap-2 rounded-md px-1 py-1 hover:bg-accent has-[[data-slot=checkbox]:focus-visible]:ring-2 has-[[data-slot=checkbox]:focus-visible]:ring-ring has-[[data-slot=checkbox]:focus-visible]:ring-inset">
+                      <Checkbox
+                        // See FacetRow: `nativeButton` is what makes the sibling
+                        // `<label for>` association work at all.
+                        nativeButton
+                        render={<button type="button" />}
+                        id={id}
+                        checked={selected.includes(option.value)}
+                        onCheckedChange={() => onToggle(option.value)}
+                      />
+                      <Label
+                        htmlFor={id}
+                        className="min-w-0 flex-1 cursor-pointer truncate font-normal"
+                      >
+                        {option.value}
+                      </Label>
+                      <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                        {option.count}
+                      </span>
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+
+          {canExpand && (
+            <Button
+              type="button"
+              variant="link"
+              size="sm"
+              onClick={() => setExpanded((value) => !value)}
+              className="h-auto px-1 py-0.5 text-xs"
+            >
+              {expanded ? "Show fewer" : `Show all ${visible.length}`}
+            </Button>
+          )}
+        </>
       )}
     </section>
   )
@@ -623,6 +647,23 @@ export const FilterSidebar = ({
   const options = React.useMemo(() => buildFilterOptions(products), [products])
   const active = filtersAreActive(filters)
   const activeCount = countActiveFilters(filters)
+
+  /**
+   * Per-facet explanation for a facet that cannot narrow results.
+   *
+   * Gymshark publishes one vendor across 5,000 products and no tags at all, so
+   * both of those checkboxes were either a no-op or absent with no
+   * explanation. Keyed by facet so each section can render its own note.
+   */
+  const redundantNotes = React.useMemo(() => {
+    const notes: Partial<Record<RedundantFacet["facet"], string>> = {}
+
+    for (const redundant of findRedundantFacets(options)) {
+      notes[redundant.facet] = describeRedundantFacet(redundant)
+    }
+
+    return notes
+  }, [options])
 
   const handleToggle = React.useCallback(
     (facet: "vendors" | "productTypes" | "tags", value: string) => {
@@ -784,6 +825,7 @@ export const FilterSidebar = ({
               onToggle={(value) => handleToggle("vendors", value)}
               searchPlaceholder="Find a vendor"
               emptyMessage="No vendors match that search."
+              redundantNote={redundantNotes.vendors}
             />
 
             <FacetSection
@@ -794,6 +836,7 @@ export const FilterSidebar = ({
               onToggle={(value) => handleToggle("productTypes", value)}
               searchPlaceholder="Find a type"
               emptyMessage="No product types match that search."
+              redundantNote={redundantNotes.productTypes}
             />
 
             <PriceFacet
@@ -815,6 +858,7 @@ export const FilterSidebar = ({
               onToggle={(value) => handleToggle("tags", value)}
               searchPlaceholder="Find a tag"
               emptyMessage="No tags match that search."
+              redundantNote={redundantNotes.tags}
             />
           </div>
         </ScrollArea>

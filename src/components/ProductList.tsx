@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { buildProductUrl } from "@/lib/domain"
+import { getTypeFacetValue, getVendorFacetValue } from "@/lib/filters"
 import {
   formatPrice,
   getDiscountPercent,
@@ -181,11 +182,33 @@ const ProductCard = ({
           )}
         </CardTitle>
 
-        {(product.vendor || product.product_type) && (
-          <CardDescription className="truncate text-xs">
-            {[product.vendor, product.product_type].filter(Boolean).join(" · ")}
-          </CardDescription>
-        )}
+        {/*
+          Both fields go through the same normalisation the facets use, and
+          near-duplicates are dropped.
+
+          Two store habits break the naive `vendor + product_type` line. Gymshark
+          sets `vendor` to "Gymshark | Be a visionary." on all 5,000 products,
+          so every card repeated a marketing tagline, and its `product_type` is
+          a delimited taxonomy path ("Womens>Apparel>Leggings>full_length")
+          rather than a label. Normalising fixes both; the de-dupe is for the
+          case where the two fields collapse to the same string.
+        */}
+        {(() => {
+          const parts = [
+            getVendorFacetValue(product.vendor),
+            getTypeFacetValue(product.product_type),
+          ].filter(
+            (part, index, all) => part.length > 0 && all.indexOf(part) === index
+          )
+
+          if (!parts.length) return null
+
+          return (
+            <CardDescription className="truncate text-xs">
+              {parts.join(" · ")}
+            </CardDescription>
+          )
+        })()}
       </CardHeader>
 
       {/*
