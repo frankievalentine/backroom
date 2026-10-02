@@ -15,7 +15,11 @@ import {
 import { buttonVariants } from "@/components/ui/button"
 import { BRAND_DESCRIPTOR, BRAND_NAME, TOOL_ROUTE } from "@/lib/brand"
 import { FAQ_ENTRIES } from "@/lib/faq"
-import { getHeroPlacement, getSupportingPlacements } from "@/lib/featured"
+import {
+  getHeroPlacement,
+  getSupportingPlacements,
+  SHOW_FEATURED_SECTION,
+} from "@/lib/featured"
 import { getPopularSites } from "@/lib/popular-sites"
 import { cn } from "@/lib/utils"
 
@@ -74,12 +78,22 @@ export default function HomePage() {
   const popularSites = getPopularSites()
   const leadSite = popularSites[0]
 
-  // Hero placement leads the carousel, so the most important slot is the one
-  // visible without interacting. Passes plain data across the client boundary.
-  const featured = [getHeroPlacement(), ...getSupportingPlacements()].filter(
-    (placement): placement is NonNullable<typeof placement> =>
-      placement !== null
-  )
+  /*
+    Hero placement leads the carousel, so the most important slot is the one
+    visible without interacting. Passes plain data across the client boundary.
+
+    Gated on SHOW_FEATURED_SECTION, and on having a live entry. Every seeded
+    placement is `status: "placeholder"`, which renders as "Sample placement",
+    so with the flag on but nothing live the section would still show a carousel
+    of samples. Both conditions are checked here rather than in featured.ts so
+    this file stays the only place that decides what the home page contains.
+  */
+  const featured = SHOW_FEATURED_SECTION
+    ? [getHeroPlacement(), ...getSupportingPlacements()].filter(
+        (placement): placement is NonNullable<typeof placement> =>
+          placement !== null
+      )
+    : []
 
   return (
     <div className="flex min-h-svh flex-col">
@@ -178,7 +192,7 @@ export default function HomePage() {
             <SectionHeading
               id="featured-heading"
               title="Featured stores"
-              description="Stores worth pointing a new user at. A placement only reads as sponsored once a live deal is running."
+              description="Stores worth pointing a new user at."
             />
 
             <div className="mt-8">

@@ -16,6 +16,20 @@
  *     set an `endsAt` ISO date so it retires itself without a follow-up change.
  */
 
+/**
+ * Whether the home page renders the Featured stores section at all.
+ *
+ * Off while there is nothing real to show. The four entries below are seed data
+ * with `status: "placeholder"`, so they render as "Sample placement" rather than
+ * as a real recommendation or a real deal. A carousel of samples reads as filler
+ * and undercuts the credibility of the rest of the page.
+ *
+ * The section, its component and the data all stay in place, so turning it back
+ * on is a one-word change here. It comes back automatically once a placement is
+ * genuinely live: set `status: "live"` on an entry and flip this to true.
+ */
+export const SHOW_FEATURED_SECTION = false
+
 export type FeaturedKind = "featured" | "sponsored"
 
 export type FeaturedStatus = "placeholder" | "live"
