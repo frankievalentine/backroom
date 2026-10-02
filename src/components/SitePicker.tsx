@@ -40,7 +40,7 @@ type SitePickerProps = {
   onRemoveSite: (domain: string) => void
 }
 
-const SITE_PICKER_LABEL = "Scrape a store"
+const SITE_PICKER_LABEL = "Explore a store"
 
 /**
  * Store picker: a validated free-text field plus a popover listing saved stores.
@@ -50,6 +50,11 @@ const SITE_PICKER_LABEL = "Scrape a store"
  * `<button>` elements inside a single menu item, which left the remove button
  * unreachable by keyboard. Rows in a popover are ordinary content, so each one
  * can expose its own controls.
+ *
+ * The label is synced to `selectedDomain` below. A store opened from the home
+ * page arrives as `?domain=`, so the server loads and streams it, and by the
+ * time this mounts the field would otherwise still read empty -- leaving the
+ * toolbar looking like nothing was selected while the whole grid sat below it.
  */
 export const SitePicker = ({
   sites,
@@ -60,9 +65,32 @@ export const SitePicker = ({
   onSubmitDomain,
   onRemoveSite,
 }: SitePickerProps) => {
-  const [draft, setDraft] = React.useState("")
   const [open, setOpen] = React.useState(false)
   const [localError, setLocalError] = React.useState<string | null>(null)
+
+  /*
+    The draft starts as the selected store rather than empty.
+
+    On a `?domain=` arrival from the home page, `selectedDomain` is already
+    correct on the very first render, so a later sync effect would never fire
+    and the field would sit blank above a fully loaded grid. Seeding initial
+    state from the prop handles that case; the sync below handles everything
+    after, when the selection changes.
+
+    Guarded so it never fights the user mid-edit: the draft is only overwritten
+    when it is empty or still equals the store we last wrote into it, so
+    whatever is in the box came from us rather than from a keystroke.
+  */
+  const [draft, setDraft] = React.useState(selectedDomain ?? "")
+  const [syncedDomain, setSyncedDomain] = React.useState(selectedDomain)
+
+  if (selectedDomain !== syncedDomain) {
+    setSyncedDomain(selectedDomain)
+
+    if (draft === "" || draft === syncedDomain) {
+      setDraft(selectedDomain ?? "")
+    }
+  }
 
   const isLoading = status === "loading"
   const error = localError ?? inputError
@@ -146,7 +174,7 @@ export const SitePicker = ({
               variant="ghost"
               size="icon-xs"
               disabled={isLoading || !draft.trim()}
-              aria-label="Scrape this store"
+              aria-label="Explore this store"
             >
               {isLoading ? (
                 <Loader2Icon

@@ -105,9 +105,43 @@ export const CatalogViewer = ({
     streamed read is the source of truth. Keeping one source per state rather
     than two that have to be reconciled is the whole of it: `products` is null
     while idle, which is what tells StreamedProducts to await the promise.
+
+    `streamed` is the exception. It is the resolved read, lifted here so the
+    sidebar can see it -- the sidebar sits outside the Suspense boundary, so it
+    cannot await the promise itself. Without this it would sit on "Filters
+    appear once a store is loaded" forever while the grid below it showed 60
+    products.
   */
-  const liveDomain = domain ?? initialDomain
-  const liveProducts = status === "idle" ? null : products
+  const [streamed, setStreamed] = React.useState<{
+    domain: string
+    products: ShopifyProduct[]
+  } | null>(null)
+
+  const liveDomain = domain ?? streamed?.domain ?? initialDomain
+
+  const liveProducts =
+    status === "idle" ? (streamed?.products ?? null) : products
+
+  /*
+    Adopts the streamed read once it resolves.
+
+    StreamedProducts calls this because it is the only component that knows when
+    the promise settled. It also saves the store here, but only on success: a
+    `?domain=` that turned out not to be Shopify never reaches a saved list.
+
+    An effect rather than a save during render, because `useSavedSites` defers its
+    localStorage read to an effect too. Saving during render would see an empty
+    list and race the hydration effect that is about to overwrite state with
+    whatever was already stored, dropping the store just added.
+  */
+  const handleStreamedStoreLoaded = React.useCallback(
+    (loadedDomain: string, loadedProducts: ShopifyProduct[]) => {
+      setStreamed({ domain: loadedDomain, products: loadedProducts })
+      addSite(loadedDomain)
+    },
+    [addSite]
+  )
+
   const liveError = status === "error" ? error : initialError
   const liveTruncated = status === "idle" ? false : truncated
   const liveStatus = status
@@ -176,6 +210,18 @@ export const CatalogViewer = ({
           : "Shopify product catalog viewer"}
       </h1>
 
+      {/*
+          Rendered with an empty array until the streamed read lands, because the
+          sidebar is outside the Suspense boundary that awaits it. It shows its
+          own "Filters appear once a store is loaded" state for that window and
+          then fills in.
+
+          This is the compromise that keeps the shell streaming: the sidebar is
+          chrome, not results, so it must not suspend. The facets arrive a
+          fraction after the grid rather than with it, which is barely
+          noticeable and far better than replacing the whole workspace with a
+          skeleton.
+        */}
       <FilterSidebar
         products={liveProducts ?? []}
         filters={filters}
@@ -246,6 +292,7 @@ export const CatalogViewer = ({
                 setVisibleCount={setVisibleCount}
                 onClearFilters={handleClearFilters}
                 onToggleAvailability={handleAvailabilityToggle}
+                onStoreLoaded={handleStreamedStoreLoaded}
               />
             </Suspense>
           </div>
@@ -270,6 +317,12 @@ type StreamedProductsProps = {
   setVisibleCount: React.Dispatch<React.SetStateAction<number>>
   onClearFilters: () => void
   onToggleAvailability: () => void
+  /**
+   * Called once the streamed read confirms a store loaded. Carries the products
+   * as well as the domain: the sidebar cannot await the promise itself, so this
+   * is how the facets get built.
+   */
+  onStoreLoaded: (domain: string, products: ShopifyProduct[]) => void
 }
 
 /**
@@ -293,6 +346,7 @@ const StreamedProducts = ({
   setVisibleCount,
   onClearFilters,
   onToggleAvailability,
+  onStoreLoaded,
 }: StreamedProductsProps) => {
   const read = store ? use(store) : null
 
@@ -302,6 +356,26 @@ const StreamedProducts = ({
   const resolvedTruncated =
     products === null && read?.ok ? read.truncated : truncated
   const resolvedDomain = domain ?? (read?.ok ? read.domain : null)
+
+  /*
+    Report a store that arrived from the home page, once, after it loads.
+
+    The ref guards against re-firing: this component re-renders on every filter
+    change, and `useSavedSites.addSite` dedupes anyway, but a callback that
+    appeared to do nothing on repeat renders would be a trap for whoever reads
+    it next. Guarded on `products` being null so it only ever applies to the
+    streamed read, never to a store the user switched to by hand.
+  */
+  const reportedRef = React.useRef(false)
+
+  React.useEffect(() => {
+    if (reportedRef.current) return
+    if (products !== null) return
+    if (!read?.ok) return
+
+    reportedRef.current = true
+    onStoreLoaded(read.domain, read.products)
+  }, [onStoreLoaded, products, read])
 
   const visibleProducts = React.useMemo<ShopifyProduct[]>(() => {
     const searched = searchProducts(resolvedProducts, query)
@@ -334,8 +408,8 @@ const StreamedProducts = ({
         <Alert className="mb-6">
           <AlertTitle>Showing a partial catalog</AlertTitle>
           <AlertDescription className="text-pretty">
-            This store has more products than one scrape can reach. The counts
-            below are a lower bound.
+            This store publishes more products than one load can reach. The
+            counts below are a lower bound.
           </AlertDescription>
         </Alert>
       )}

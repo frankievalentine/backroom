@@ -76,7 +76,7 @@ export const normalizeDomain = (input: string): NormalizeResult => {
   }
 
   if (isBlockedHostname(hostname)) {
-    return { ok: false, reason: "That host cannot be scraped." }
+    return { ok: false, reason: "That host cannot be explored." }
   }
 
   return { ok: true, domain: hostname }

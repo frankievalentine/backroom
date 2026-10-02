@@ -15,7 +15,7 @@ export type FaqEntry = {
 export const FAQ_ENTRIES: readonly FaqEntry[] = [
   {
     id: "which-stores",
-    question: "Which stores can I scrape?",
+    question: "Which stores can I explore?",
     answer:
       "Any storefront running on Shopify. We detect the platform automatically and read its public products.json endpoint, which most Shopify themes expose. WooCommerce, BigCommerce, Magento and custom storefronts are not supported yet, and we would rather say so than return an empty list.",
   },
@@ -29,7 +29,7 @@ export const FAQ_ENTRIES: readonly FaqEntry[] = [
     id: "stored-anywhere",
     question: "Is my browsing history stored?",
     answer:
-      "Saved stores live in your browser's local storage. They never leave your device, and we have no account system to attach them to. Scraped product data is held in memory for the length of the page view and discarded when you close the tab.",
+      "Saved stores live in your browser's local storage. They never leave your device, and we have no account system to attach them to. Product data is held in memory for the length of the page view and discarded when you close the tab.",
   },
   {
     id: "large-stores",
