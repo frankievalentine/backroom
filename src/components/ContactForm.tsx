@@ -1,11 +1,33 @@
 "use client"
 
+import Script from "next/script"
 import * as React from "react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import type { ContactInput } from "@/lib/contact"
+import { contactSchema, firstFieldErrors } from "@/lib/contact"
+
+declare global {
+  interface Window {
+    turnstile?: {
+      render: (
+        container: HTMLElement,
+        options: {
+          sitekey: string
+          action: string
+          theme: "auto"
+          callback: (token: string) => void
+          "error-callback": () => void
+          "expired-callback": () => void
+        }
+      ) => string
+      reset: (widgetId: string) => void
+    }
+  }
+}
 
 type SendState =
   | { status: "idle" }
@@ -30,25 +52,73 @@ export const ContactForm = ({
   configured: boolean
 }) => {
   const [state, setState] = React.useState<SendState>({ status: "idle" })
+  const [fieldErrors, setFieldErrors] = React.useState<
+    Partial<Record<keyof ContactInput, string>>
+  >({})
+  const [turnstileToken, setTurnstileToken] = React.useState<string | null>(
+    null
+  )
+  const [widgetIssue, setWidgetIssue] = React.useState(false)
+  const widgetContainer = React.useRef<HTMLDivElement>(null)
+  const widgetId = React.useRef<string | null>(null)
+
+  const renderTurnstile = () => {
+    if (widgetId.current || !widgetContainer.current) return
+
+    const turnstile = window.turnstile
+    const sitekey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
+    if (!turnstile || !sitekey) {
+      setWidgetIssue(true)
+      return
+    }
+
+    try {
+      widgetId.current = turnstile.render(widgetContainer.current, {
+        sitekey,
+        action: "contact",
+        theme: "auto",
+        callback: (token) => {
+          setTurnstileToken(token)
+          setWidgetIssue(false)
+        },
+        "error-callback": () => {
+          setTurnstileToken(null)
+          setWidgetIssue(true)
+        },
+        "expired-callback": () => setTurnstileToken(null),
+      })
+    } catch {
+      setWidgetIssue(true)
+    }
+  }
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-
     const form = event.currentTarget
-    const data = new FormData(form)
-
-    setState({ status: "sending" })
 
     try {
+      const data = new FormData(form)
+      const input = {
+        kind,
+        email: data.get("email"),
+        domain: data.get("domain"),
+        message: data.get("message"),
+      }
+      const parsed = contactSchema.safeParse(input)
+
+      if (!parsed.success) {
+        setFieldErrors(firstFieldErrors(parsed.error))
+        setState({ status: "idle" })
+        return
+      }
+
+      setFieldErrors({})
+      setState({ status: "sending" })
+
       const response = await fetch("/api/contact", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          kind,
-          email: data.get("email"),
-          domain: data.get("domain"),
-          message: data.get("message"),
-        }),
+        body: JSON.stringify({ ...parsed.data, turnstileToken }),
       })
 
       if (response.ok) {
@@ -58,8 +128,10 @@ export const ContactForm = ({
 
       const body = (await response.json().catch(() => null)) as {
         error?: string
+        fields?: Partial<Record<keyof ContactInput, string>>
       } | null
 
+      setFieldErrors(body?.fields ?? {})
       setState({
         status: "error",
         message: body?.error ?? "Unable to send. Please try again.",
@@ -70,6 +142,15 @@ export const ContactForm = ({
         message:
           "Unable to reach the server. Check your connection and try again.",
       })
+    } finally {
+      setTurnstileToken(null)
+      if (widgetId.current && window.turnstile) {
+        try {
+          window.turnstile.reset(widgetId.current)
+        } catch {
+          setWidgetIssue(true)
+        }
+      }
     }
   }
 
@@ -93,6 +174,9 @@ export const ContactForm = ({
 
   const sending = state.status === "sending"
   const error = state.status === "error" ? state.message : null
+  const emailError = fieldErrors.email
+  const domainError = fieldErrors.domain
+  const messageError = fieldErrors.message
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4" noValidate>
@@ -106,9 +190,15 @@ export const ContactForm = ({
             required
             autoComplete="email"
             placeholder="you@yourstore.com"
-            aria-invalid={error ? true : undefined}
+            aria-invalid={emailError ? true : undefined}
+            aria-describedby={emailError ? "contact-email-error" : undefined}
             disabled={sending}
           />
+          {emailError && (
+            <p id="contact-email-error" className="text-sm text-destructive">
+              <span className="font-medium">Error:</span> {emailError}
+            </p>
+          )}
         </div>
 
         <div className="space-y-2">
@@ -118,9 +208,15 @@ export const ContactForm = ({
             name="domain"
             type="text"
             placeholder="Optional"
-            aria-invalid={error ? true : undefined}
+            aria-invalid={domainError ? true : undefined}
+            aria-describedby={domainError ? "contact-domain-error" : undefined}
             disabled={sending}
           />
+          {domainError && (
+            <p id="contact-domain-error" className="text-sm text-destructive">
+              <span className="font-medium">Error:</span> {domainError}
+            </p>
+          )}
         </div>
       </div>
 
@@ -142,9 +238,15 @@ export const ContactForm = ({
           required
           rows={5}
           placeholder="Tell us what you need."
-          aria-invalid={error ? true : undefined}
+          aria-invalid={messageError ? true : undefined}
+          aria-describedby={messageError ? "contact-message-error" : undefined}
           disabled={sending}
         />
+        {messageError && (
+          <p id="contact-message-error" className="text-sm text-destructive">
+            <span className="font-medium">Error:</span> {messageError}
+          </p>
+        )}
       </div>
 
       {/*
@@ -162,7 +264,22 @@ export const ContactForm = ({
         )}
       </p>
 
-      <Button type="submit" disabled={sending}>
+      <div>
+        <Script
+          src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
+          strategy="afterInteractive"
+          onLoad={renderTurnstile}
+          onError={() => setWidgetIssue(true)}
+        />
+        <div ref={widgetContainer} />
+        {widgetIssue && (
+          <p className="mt-2 text-sm text-muted-foreground">
+            Verification is unavailable right now. Please refresh and try again.
+          </p>
+        )}
+      </div>
+
+      <Button type="submit" disabled={sending || !turnstileToken}>
         {sending ? "Sending" : "Send request"}
       </Button>
     </form>

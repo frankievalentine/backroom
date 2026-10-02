@@ -57,6 +57,10 @@ export const isContactConfigured = (): boolean =>
   !RESEND_FROM.includes("onboarding@resend.dev") &&
   isValidSender(RESEND_FROM)
 
+/** The widget cannot render without its public site key. */
+export const isTurnstileConfigured = (): boolean =>
+  Boolean(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY)
+
 /**
  * Footer disclaimer. The no-endorsement clause does the real work: naming a brand
  * to say whose store it is is fine, and the risk is a reader inferring a

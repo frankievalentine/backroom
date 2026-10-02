@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 
 import { ContactForm } from "@/components/ContactForm"
 import { LegalPage } from "@/components/LegalPage"
-import { isContactConfigured } from "@/lib/legal"
+import { isContactConfigured, isTurnstileConfigured } from "@/lib/legal"
 
 export const metadata: Metadata = {
   title: "Contact",
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
  * that renders and then fails is worse than one that never appears.
  */
 export default function ContactPage() {
-  const configured = isContactConfigured()
+  const configured = isContactConfigured() && isTurnstileConfigured()
 
   return (
     <LegalPage

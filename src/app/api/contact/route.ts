@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server"
 import { Resend } from "resend"
 
+import { contactSchema, firstFieldErrors } from "@/lib/contact"
 import { CONTACT_EMAIL, isContactConfigured, RESEND_FROM } from "@/lib/legal"
+import { verifyTurnstileToken } from "@/lib/turnstile"
 
 /**
  * Merchant and rights-holder requests.
@@ -40,16 +42,6 @@ const isRateLimited = (ip: string): boolean => {
   return false
 }
 
-type RequestBody = {
-  kind?: unknown
-  email?: unknown
-  domain?: unknown
-  message?: unknown
-}
-
-const asText = (value: unknown, limit: number): string =>
-  typeof value === "string" ? value.trim().slice(0, limit) : ""
-
 const errorResponse = (message: string, status: number) =>
   NextResponse.json({ error: message }, { status })
 
@@ -74,28 +66,40 @@ export async function POST(request: Request) {
     )
   }
 
-  let body: RequestBody
+  let body: unknown
 
   try {
-    body = (await request.json()) as RequestBody
+    body = await request.json()
   } catch {
     return errorResponse("Request body must be valid JSON.", 400)
   }
 
-  const kind = asText(body.kind, 60)
-  const email = asText(body.email, 200)
-  const domain = asText(body.domain, 200)
-  const message = asText(body.message, 4000)
+  const parsed = contactSchema.safeParse(body)
 
-  // Said next to the field that failed, and worded to match the form's inline
-  // error so the two cannot disagree.
-  if (!message) {
-    return errorResponse("Tell us what you need.", 400)
+  if (!parsed.success) {
+    return NextResponse.json(
+      {
+        error: "Please correct the highlighted fields.",
+        fields: firstFieldErrors(parsed.error),
+      },
+      { status: 400 }
+    )
   }
 
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return errorResponse("Enter an email address so we can reply.", 400)
+  const token =
+    typeof body === "object" && body !== null
+      ? (body as Record<string, unknown>).turnstileToken
+      : undefined
+  const verified = await verifyTurnstileToken(token, ip)
+
+  if (!verified) {
+    return errorResponse(
+      "We could not verify your request. Please try again.",
+      403
+    )
   }
+
+  const { kind, email, domain, message } = parsed.data
 
   const resend = new Resend(process.env.RESEND_API_KEY)
 
