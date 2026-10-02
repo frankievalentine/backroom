@@ -14,7 +14,7 @@
 
 /** Where requests are delivered. Must be a mailbox you actually read. */
 export const CONTACT_EMAIL =
-  process.env.CONTACT_EMAIL ?? "frankievalentine@gmail.com"
+  process.env.CONTACT_EMAIL
 
 /** Verified Resend sender, e.g. "Backroom <noreply@yourdomain.com>". */
 export const RESEND_FROM =
@@ -25,22 +25,30 @@ export const PRIVACY_EFFECTIVE_DATE = "1 October 2026"
 export const TERMS_EFFECTIVE_DATE = "1 October 2026"
 
 /**
- * Whether the sender string is one Resend will accept.
+ * Whether the sender string names an address Resend can send from.
  *
- * Resend requires `Name <you@yourdomain.com>`. Two mistakes pass a naive
- * truthiness check and fail only at send time, and both happened: a bare address
- * with no display name, and a `*.vercel.app` host, which nobody can verify in a
- * Resend account because the DNS is not theirs to verify. Either one renders a
- * form that cannot deliver, which is the outcome this guard exists to prevent.
+ * Resend accepts a bare address (`legal@yourdomain.com`) as well as the display
+ * form (`Backroom <legal@yourdomain.com>`). An earlier version required the
+ * angle-bracket form on the assumption it was mandatory, which was wrong: it
+ * turned off a working configuration and hid the form from every visitor.
  *
- * The `vercel.app` exclusion is narrow on purpose. Resend's shared onboarding
- * address is handled separately by `isContactConfigured`, and any real custom
- * domain passes on the assumption it has been verified.
+ * So the check is deliberately narrow. Extract the address from either shape,
+ * then reject `*.vercel.app`. That exclusion is the part that earns its keep,
+ * because the domain's DNS is not the Resend account owner's to verify and
+ * sending from it always fails. Real custom domains pass on the assumption they
+ * have been verified, which cannot be checked from here.
  */
-const SENDER_PATTERN = /^\s*[^<>]*<\s*([^<>\s]+@[A-Za-z0-9.-]+)\s*>\s*$/
+const SENDER_PATTERNS = [
+  // Display-name form: "Backroom <legal@yourdomain.com>"
+  /<([^<>\s]+@[A-Za-z0-9.-]+)>/,
+  // Bare address: "legal@yourdomain.com"
+  /^\s*([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+)\s*$/,
+]
 
 export const isValidSender = (from: string): boolean => {
-  const match = from.match(SENDER_PATTERN)
+  const match = SENDER_PATTERNS.map((pattern) => from.match(pattern)).find(
+    (result): result is RegExpMatchArray => result !== null
+  )
 
   if (!match) return false
 
