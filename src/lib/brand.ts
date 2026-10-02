@@ -14,12 +14,6 @@
 /** Full product name. Used in the wordmark and page titles. */
 export const BRAND_NAME = "Backroom"
 
-/** Short form for tight spaces where the full name will not fit. */
-export const BRAND_SHORT = "Backroom"
-
-/** Initials for the square badge. Two characters, uppercase. */
-export const BRAND_INITIALS = "BR"
-
 /** One-line description of what the product is. */
 export const BRAND_DESCRIPTOR = "A storefront explorer"
 

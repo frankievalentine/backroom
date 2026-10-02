@@ -11,7 +11,7 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import * as React from "react"
-
+import { BrandMark } from "@/components/BrandMark"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -33,7 +33,7 @@ import {
   SidebarMenuItem,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
-import { BRAND_INITIALS, BRAND_NAME } from "@/lib/brand"
+import { BRAND_NAME } from "@/lib/brand"
 import {
   buildFilterOptions,
   countActiveFilters,
@@ -517,16 +517,14 @@ const FacetSection = ({
  * sidebar is a Sheet with no other navigation in it.
  */
 const SidebarWordmark = () => (
+  /* `group` is what the door's hover animation hangs off, in globals.css. This
+     element also sits inside a sidebar group, but that one keys off a data
+     attribute rather than the class, so the two do not collide. */
   <Link
     href="/"
-    className="flex min-w-0 flex-1 items-center gap-2 rounded-md text-sm font-semibold tracking-tight group-data-[collapsible=icon]:hidden"
+    className="group flex min-w-0 flex-1 items-center gap-2 rounded-md text-sm font-semibold tracking-tight group-data-[collapsible=icon]:hidden"
   >
-    <span
-      aria-hidden="true"
-      className="grid size-6 shrink-0 place-items-center rounded-md bg-primary text-[0.625rem] font-bold text-primary-foreground"
-    >
-      {BRAND_INITIALS}
-    </span>
+    <BrandMark />
     <span className="truncate group-data-[collapsible=icon]:sr-only">
       {BRAND_NAME}
     </span>

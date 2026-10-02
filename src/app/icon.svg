@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" role="img" aria-label="Backroom">
+  <title>Backroom</title>
+  <!--
+    The brand mark, frozen closed: a favicon cannot animate, so this is the rest
+    state of the swing in src/components/BrandMark.tsx. Keep the two in step.
+
+    The leaf is filled, with the knob punched out by fill-rule="evenodd" rather
+    than drawn as a separate stroked circle, so nothing here can foreshorten
+    unevenly the way a stroke does. That is the whole of the "open and closing"
+    geometry: the same fill, held shut.
+
+    Drawn as a filled badge rather than a bare glyph on purpose: a transparent
+    near-black glyph is all but invisible on dark browser chrome, while the
+    badge carries its own contrast in either theme. Colours are the light-theme
+    values of --primary and --primary-foreground, since an SVG icon cannot read
+    the page's custom properties.
+  -->
+  <rect width="24" height="24" rx="5" fill="#171717" />
+  <path
+    d="M6 20.6V9a6 6 0 0 1 12 0v11.6Z"
+    fill="#fafafa"
+    opacity="0.16"
+  />
+  <!-- Leaf and knob as one path: evenodd punches the knob out as a hole, so the
+       faint opening behind shows through it. Identical to BrandMark.tsx. -->
+  <path
+    d="M6.6 20.4V9a5.4 5.4 0 0 1 10.8 0v11.4ZM13.5 13.6a1.05 1.05 0 1 0 2.1 0a1.05 1.05 0 1 0 -2.1 0Z"
+    fill="#fafafa"
+    fill-rule="evenodd"
+  />
+</svg>

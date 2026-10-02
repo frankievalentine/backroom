@@ -115,7 +115,7 @@ export default function HomePage() {
                 href={TOOL_ROUTE}
                 className={cn(buttonVariants({ size: "lg" }), "gap-1.5")}
               >
-                Open the catalog
+                Open the explorer
                 <ArrowRightIcon aria-hidden="true" />
               </Link>
 
@@ -255,7 +255,7 @@ export default function HomePage() {
             href={TOOL_ROUTE}
             className="underline underline-offset-4 hover:text-foreground"
           >
-            Open the catalog
+            Open the explorer
           </Link>
         </div>
       </footer>

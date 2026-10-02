@@ -1,7 +1,8 @@
 import Link from "next/link"
 
+import { BrandMark } from "@/components/BrandMark"
 import { buttonVariants } from "@/components/ui/button"
-import { BRAND_INITIALS, BRAND_NAME } from "@/lib/brand"
+import { BRAND_NAME } from "@/lib/brand"
 import { cn } from "@/lib/utils"
 
 type SiteHeaderProps = {
@@ -46,18 +47,14 @@ export const SiteHeader = ({
     >
       <div className="mx-auto flex h-14 w-full max-w-6xl items-center gap-3 px-5 sm:px-8">
         <div className="flex min-w-0 items-center gap-2 text-sm font-semibold tracking-tight">
+          {/* `group` is what the door's hover animation hangs off, in globals.css. */}
           <Link
             href="/"
-            className="flex shrink-0 items-center gap-2 rounded-md"
+            className="group flex shrink-0 items-center gap-2 rounded-md"
           >
-            <span
-              aria-hidden="true"
-              className="grid size-6 place-items-center rounded-md bg-primary text-[0.625rem] font-bold text-primary-foreground"
-            >
-              {BRAND_INITIALS}
-            </span>
+            <BrandMark />
             <span className="hidden sm:inline">{BRAND_NAME}</span>
-            <span className="sm:hidden">{BRAND_INITIALS}</span>
+            <span className="sm:hidden">{BRAND_NAME}</span>
             <span className="sr-only">, home</span>
           </Link>
 
@@ -82,7 +79,7 @@ export const SiteHeader = ({
                   buttonVariants({ variant: "outline", size: "sm" })
                 )}
               >
-                Open catalog
+                Open explorer
               </Link>
             ) : null)}
         </div>

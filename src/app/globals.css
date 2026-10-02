@@ -201,6 +201,117 @@
   }
 }
 
+/* The swinging door in the brand mark.
+
+   The leaf is hinged on its left edge, so transform-box: fill-box puts the
+   origin on the hinge rather than on the SVG viewport.
+
+   The leaf is filled rather than stroked, which is what lets rotateY read as a
+   door opening instead of a stroke-width bug: a stroke foreshortens along with
+   the shape it outlines, a solid panel foreshortens the way a real object in
+   perspective does. See the note in BrandMark.tsx.
+
+   58 degrees was picked by rendering 44, 58 and 78 at the open extreme and
+   comparing them. 78 collapses the mark to a featureless sliver; 44 does not
+   read as open. 58 is unmistakably ajar while still holding its weight at 20px,
+   which matters because the open phase is most of the cycle.
+
+   brand-door-open is the one-shot played once on page load, so the mark
+   introduces itself without waiting to be hovered. brand-door-swing is the
+   loop on hover. */
+@keyframes brand-door-open {
+  0% {
+    transform: rotateY(0deg);
+  }
+  55% {
+    transform: rotateY(-58deg);
+  }
+  100% {
+    transform: rotateY(0deg);
+  }
+}
+
+@keyframes brand-door-swing {
+  0%,
+  8% {
+    transform: rotateY(0deg);
+  }
+  30%,
+  52% {
+    transform: rotateY(-58deg);
+  }
+  74%,
+  100% {
+    transform: rotateY(0deg);
+  }
+}
+
+/* Fallback for engines without 3D transforms. A flat leaf that narrows in
+   place still reads as a door moving, and unlike the 2D rotation it does not
+   grow the bounding box and flap. */
+@keyframes brand-door-open-flat {
+  0% {
+    transform: scaleX(1);
+  }
+  55% {
+    transform: scaleX(0.16);
+  }
+  100% {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes brand-door-swing-flat {
+  0%,
+  8% {
+    transform: scaleX(1);
+  }
+  30%,
+  52% {
+    transform: scaleX(0.16);
+  }
+  74%,
+  100% {
+    transform: scaleX(1);
+  }
+}
+
+.brand-door-leaf {
+  transform-box: fill-box;
+  transform-origin: left center;
+  animation: brand-door-open 1.6s cubic-bezier(0.4, 0, 0.2, 1) 1 both;
+}
+
+/* Hover and keyboard focus run the loop instead. A mark that opened and shut on
+   a timer forever would be noise in a header; hover is the interaction that
+   implies "look closer". focus-visible is included so the detail is reachable
+   without a mouse. */
+.group:hover .brand-door-leaf,
+.group:focus-visible .brand-door-leaf {
+  animation: brand-door-swing 4s ease-in-out infinite;
+}
+
+@supports not (transform: rotateY(1deg)) {
+  .brand-door-leaf {
+    animation-name: brand-door-open-flat;
+  }
+
+  .group:hover .brand-door-leaf,
+  .group:focus-visible .brand-door-leaf {
+    animation-name: brand-door-swing-flat;
+  }
+}
+
+/* Reduced motion: leave the door shut rather than dropping the leaf, so the
+   mark still reads as a door instead of an empty frame. */
+@media (prefers-reduced-motion: reduce) {
+  .brand-door-leaf,
+  .group:hover .brand-door-leaf,
+  .group:focus-visible .brand-door-leaf {
+    animation: none;
+  }
+}
+
 @utility text-balance {
   text-wrap: balance;
 }
