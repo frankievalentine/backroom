@@ -13,13 +13,14 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion"
 import { buttonVariants } from "@/components/ui/button"
-import { BRAND_DESCRIPTOR, BRAND_NAME, TOOL_ROUTE } from "@/lib/brand"
+import { BRAND_NAME, TOOL_ROUTE } from "@/lib/brand"
 import { FAQ_ENTRIES } from "@/lib/faq"
 import {
   getHeroPlacement,
   getSupportingPlacements,
   SHOW_FEATURED_SECTION,
 } from "@/lib/featured"
+import { AFFILIATION_DISCLAIMER, LEGAL_CONTACT } from "@/lib/legal"
 import { getPopularSites } from "@/lib/popular-sites"
 import { cn } from "@/lib/utils"
 
@@ -260,17 +261,28 @@ export default function HomePage() {
       </main>
 
       <footer className={cn("mx-auto w-full px-5 py-10 sm:px-8", PAGE_WIDTH)}>
-        <div className="flex flex-col gap-2 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-          <p>
-            {BRAND_NAME} — {BRAND_DESCRIPTOR}. Not affiliated with Shopify.
-            Store data belongs to its owners.
-          </p>
-          <Link
-            href={TOOL_ROUTE}
-            className="underline underline-offset-4 hover:text-foreground"
-          >
-            Open the explorer
-          </Link>
+        <div className="space-y-4 text-sm text-muted-foreground">
+          <p className="max-w-prose text-pretty">{AFFILIATION_DISCLAIMER}</p>
+
+          {/*
+            A flat list rather than a row that wraps oddly on mobile. Each label
+            says where it goes, since a screen-reader user reaches these as a
+            list of links and "Legal" alone would not distinguish them.
+          */}
+          <nav aria-label="Legal" className="flex flex-wrap gap-x-4 gap-y-2">
+            <Link href="/privacy" className="hover:text-foreground">
+              Privacy
+            </Link>
+            <Link href="/terms" className="hover:text-foreground">
+              Terms
+            </Link>
+            <a
+              href={`mailto:${LEGAL_CONTACT}`}
+              className="hover:text-foreground"
+            >
+              Brand or rights-holder requests
+            </a>
+          </nav>
         </div>
       </footer>
     </div>
