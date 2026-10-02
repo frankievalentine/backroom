@@ -6,15 +6,13 @@ import { CONTACT_EMAIL, isContactConfigured, RESEND_FROM } from "@/lib/legal"
 /**
  * Merchant and rights-holder requests.
  *
- * An earlier version pointed at a `mailto:` address on a domain that does not
- * resolve, which is the worst of both: a link that silently goes nowhere while
- * implying a monitored inbox. A form that either delivers or says it cannot is
- * honest in a way a dead address is not.
+ * A form rather than a `mailto:` on a domain that does not resolve, which was a
+ * link that silently went nowhere while implying a monitored inbox. A form either
+ * delivers or says it cannot.
  *
- * Two things make this safe to expose publicly. It is rate limited per IP so it
- * cannot be used to send mail to anyone else, and the visitor's address is used
- * as `replyTo` rather than as a sender, so a visitor cannot spoof the From
- * header and make the message look like it came from us.
+ * Safe to expose because it is rate limited per IP, and the visitor's address
+ * goes in `replyTo` rather than as a sender, so nobody can send mail appearing to
+ * come from us.
  */
 
 /** Requests allowed per IP per hour. Comfortably above real takedown volume. */
@@ -22,12 +20,9 @@ const RATE_LIMIT = 5
 const RATE_WINDOW_MS = 60 * 60 * 1000
 
 /**
- * Best-effort per-isolate rate limit.
- *
- * The same caveat as the scrape cache: this resets when the isolate recycles, so
- * it is a speed bump against casual misuse rather than a hard guarantee. It is
- * enough here because the cost of abuse is a single email to ourselves, not a
- * bill for someone else.
+ * Best-effort per-isolate rate limit. Same caveat as the scrape cache: it resets
+ * when the isolate recycles, so a speed bump against casual misuse rather than a
+ * guarantee. Enough here because the cost of abuse is one email to ourselves.
  */
 const hits = new Map<string, number[]>()
 
@@ -62,8 +57,7 @@ export async function POST(request: Request) {
   if (!isContactConfigured()) {
     /*
       Said plainly rather than silently accepting. A form that reports success
-      and drops the message is the failure mode that actually loses a takedown
-      request, and this is the one email that must never be lost.
+      and drops the message is what actually loses a takedown request.
     */
     return errorResponse(
       "This form is not available right now. Please try again later.",
@@ -93,10 +87,10 @@ export async function POST(request: Request) {
   const domain = asText(body.domain, 200)
   const message = asText(body.message, 4000)
 
-  // Said next to the field that failed, per the writing rules, and the same
-  // text the form shows inline so the two cannot disagree.
+  // Said next to the field that failed, and worded to match the form's inline
+  // error so the two cannot disagree.
   if (!message) {
-    return errorResponse("Tell us what you would like us to change.", 400)
+    return errorResponse("Tell us what you need.", 400)
   }
 
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -125,8 +119,8 @@ export async function POST(request: Request) {
   })
 
   if (error) {
-    // Logged rather than returned. The visitor gets a generic message because
-    // provider error text can leak the API key or the destination address.
+    // Logged, not returned: provider error text can leak the key or the
+    // destination address.
     console.error("contact form send failed", error)
     return errorResponse(
       "Unable to send your message. Please try again in a few minutes.",

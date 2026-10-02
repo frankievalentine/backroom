@@ -4,28 +4,22 @@ import { LegalPage } from "@/components/LegalPage"
 import { PRIVACY_EFFECTIVE_DATE } from "@/lib/legal"
 
 export const metadata: Metadata = {
-  title: "Privacy",
+  title: "Privacy policy",
   description: "What Backroom collects, what it does not, and how to reach us.",
 }
 
 /**
  * Privacy policy.
  *
- * Kept short because the application is short. There is no account system, no
- * visitor database, and no analytics, so the honest disclosure is that our host
- * records ordinary request data and nothing else happens. Boilerplate that
- * technically covers that would be longer and less true.
- *
- * The sections follow the questions a reader actually has, in the order they
- * would ask them: what do you collect, what happens to the catalog, what about
- * cookies, what don't you do, how do I get rid of it.
+ * Short because the app is short: no accounts, no visitor database, no analytics,
+ * so the honest disclosure is that the host records ordinary request data and
+ * nothing else happens. Sections follow the questions a reader asks, in order.
  */
 export default function PrivacyPage() {
   return (
     <LegalPage
-      title="Privacy"
+      title="Privacy policy"
       updated={PRIVACY_EFFECTIVE_DATE}
-      formKind="privacy"
       intro="Backroom has no accounts and keeps no database of people. This page covers what is actually collected, which is very little."
     >
       <section>

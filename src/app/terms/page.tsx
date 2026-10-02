@@ -4,34 +4,28 @@ import { LegalPage } from "@/components/LegalPage"
 import { TERMS_EFFECTIVE_DATE } from "@/lib/legal"
 
 export const metadata: Metadata = {
-  title: "Terms",
+  title: "Terms of use",
   description: "The terms for using Backroom.",
 }
 
 /**
  * Terms of use.
  *
- * Three sections are load-bearing rather than boilerplate, and each is written to
- * match what the code actually does:
+ * Three sections are load-bearing rather than boilerplate, each written to match
+ * what the code does: accuracy, because the catalog genuinely can be partial; the
+ * intellectual property section, which records that no product images are copied
+ * and no store copy is displayed, both true and neither obvious to a reader; and
+ * removal, which describes the blocklist that exists rather than promising
+ * takedowns the code could not perform.
  *
- * 1. The accuracy section, because the catalog genuinely can be partial and the
- *    interface says so. A warranty of completeness would contradict the product.
- * 2. The intellectual property section, which records that Backroom neither
- *    copies product images nor displays stores' written descriptions. Both are
- *    true and neither is obvious to a reader.
- * 3. The removal section, which describes the blocklist that exists. A policy
- *    promising takedowns the code could not perform is worse than making no
- *    promise at all.
- *
- * Written in plain sentences on purpose. A legal page nobody can follow does not
- * protect anybody.
+ * Plain sentences on purpose. A legal page nobody can follow does not protect
+ * anybody.
  */
 export default function TermsPage() {
   return (
     <LegalPage
-      title="Terms"
+      title="Terms of use"
       updated={TERMS_EFFECTIVE_DATE}
-      formKind="rights"
       intro="These terms cover your use of Backroom. Using the site means you accept them."
     >
       <section>
@@ -97,13 +91,27 @@ export default function TermsPage() {
       <section>
         <h2>Removing a store</h2>
         <p>
-          If you run a storefront and want your domain removed, use the form at
-          the bottom of this page. We add requested domains to a blocklist
-          without argument, and the change goes live on our next deploy.
+          If you run a storefront and want your domain removed, use the contact
+          form. We add requested domains to a blocklist without argument, and
+          the change goes live on our next deploy.
         </p>
         <p>
           If you believe material shown here infringes your rights, use the same
           form. We remove disputed material first and investigate afterwards.
+        </p>
+      </section>
+
+      <section>
+        <h2>Sponsored placements</h2>
+        <p>
+          The sponsored section on the home page contains paid placements only.
+          There are no free editorial picks mixed in, and every store shown
+          there carries a visible Sponsored label.
+        </p>
+        <p>
+          A placement is a card and a link. It does not change how a store is
+          filtered, ranked, or counted anywhere in the tool, and it does not
+          affect whether a store loads.
         </p>
       </section>
 

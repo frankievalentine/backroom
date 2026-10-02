@@ -71,10 +71,9 @@ const FacetRow = ({
   <div className="flex items-center gap-2 rounded-md px-1 py-1 hover:bg-accent has-[[data-slot=checkbox]:focus-visible]:ring-2 has-[[data-slot=checkbox]:focus-visible]:ring-ring has-[[data-slot=checkbox]:focus-visible]:ring-inset">
     {/*
       `nativeButton` is required, not decorative. Base UI renders Checkbox as a
-      `<span>` by default so that an *enclosing* `<label>` can wrap it; this
-      layout uses sibling `<label for>` pairs instead, and a `<span>` is not a
-      labelable element, so the association silently did nothing. The docs call
-      this out directly: use `nativeButton` with sibling labels.
+      `<span>` so an *enclosing* `<label>` can wrap it; this layout uses sibling
+      `<label for>` pairs, and a `<span>` is not labelable, so the association
+      silently did nothing.
     */}
     <Checkbox
       nativeButton
@@ -149,9 +148,9 @@ type AvailabilityFacetProps = {
 /**
  * In-stock toggle.
  *
- * Off by default, because sold-out items are still catalog entries. The count
- * of what the toggle hides is shown so the control explains itself before it is
- * used, rather than appearing to do nothing on a fully in-stock store.
+ * Off by default: sold-out items are real catalog entries. The count of what it
+ * hides is shown so the control explains itself before it is used, rather than
+ * appearing to do nothing on a fully in-stock store.
  */
 const AvailabilityFacet = ({
   inStockOnly,
@@ -233,14 +232,12 @@ type CollapsedFacetNavProps = {
 /**
  * Rail navigation, shown only when the sidebar is collapsed to icons.
  *
- * A 3rem rail cannot show checkbox lists, so the full facets are hidden via
- * `group-data-[collapsible=icon]:hidden` and each facet becomes an icon that
- * opens its own popover. That keeps every filter reachable while collapsed,
- * rather than making the user expand the sidebar to change a single checkbox.
+ * A 3rem rail cannot show checkbox lists, so each facet becomes an icon opening
+ * its own popover. That keeps every filter reachable while collapsed, rather than
+ * making the user expand the sidebar to change one checkbox.
  *
- * A popover rather than a dialog: each of these is a short list, it needs no
- * title or confirm action, and a modal would be heavier than the interaction
- * warrants. Popover is also non-modal, so the rest of the rail stays reachable.
+ * A popover rather than a dialog: these are short lists needing no title or
+ * confirm action, and a non-modal surface leaves the rest of the rail reachable.
  */
 const CollapsedFacetNav = ({
   options,
@@ -314,9 +311,8 @@ const CollapsedFacetNav = ({
               render={
                 <SidebarMenuButton
                   tooltip={title}
-                  // Centres the icon in the 3rem rail. The button is a fixed
-                  // 32px square inside a full-width list item, so without this
-                  // it sat hard against the left edge.
+                  // Centres the icon in the 3rem rail: a fixed 32px square inside
+                  // a full-width item sat hard against the left edge.
                   className="mx-auto"
                 />
               }
@@ -363,11 +359,9 @@ const CollapsedFacetNav = ({
 const PREVIEW_COUNT = 8
 
 /**
- * Turn a facet title into an id fragment.
- *
- * Titles are human strings ("Product types"), and an id may not contain
- * whitespace. Slugging once and reusing the result keeps the `<section>`,
- * its `<h3>` and every checkbox label pointing at the same valid id.
+ * Turn a facet title into an id fragment. Titles are human strings ("Product
+ * types") and an id may not contain whitespace; slugging once keeps the
+ * `<section>`, its `<h3>` and every checkbox label pointing at the same id.
  */
 const slugify = (value: string): string =>
   value.toLowerCase().replace(/\s+/g, "-")
@@ -385,18 +379,17 @@ type FacetSectionProps = {
   /**
    * Why this facet cannot narrow results, shown instead of the checkbox list.
    *
-   * Without it a store that publishes one vendor, or no tags at all, silently
-   * drops a heading and leaves the user wondering whether the filter exists.
+   * Without it a store publishing one vendor, or no tags at all, silently drops
+   * a heading and leaves the user wondering whether the filter exists.
    */
   redundantNote?: string
 }
 
 /**
- * One collapsible facet.
- *
- * Lists longer than `PREVIEW_COUNT` collapse behind an explicit control. The
- * previous version hard-truncated tags at 20 with no way to reach the rest, and
- * rendered vendors uncapped, so a 500-vendor store produced 500 checkboxes.
+ * One collapsible facet. Lists longer than `PREVIEW_COUNT` collapse behind an
+ * explicit control; an earlier version hard-truncated tags at 20 with no way to
+ * reach the rest, and rendered vendors uncapped, so a 500-vendor store produced
+ * 500 checkboxes.
  */
 const FacetSection = ({
   icon,
@@ -412,9 +405,9 @@ const FacetSection = ({
   const [query, setQuery] = React.useState("")
   const [expanded, setExpanded] = React.useState(false)
 
-  // `useId` because this facet is rendered twice: once in the sidebar and
-  // again inside the collapsed rail's popover. A fixed id would be duplicated
-  // in the document, and `aria-labelledby` would then resolve to the wrong one.
+  // `useId` because this facet renders twice: in the sidebar and again in the
+  // collapsed rail's popover. A fixed id would be duplicated in the document and
+  // `aria-labelledby` would resolve to the wrong one.
   const instanceId = React.useId()
   const headingId = `facet-${slugify(title)}-${instanceId}`
 
@@ -464,10 +457,9 @@ const FacetSection = ({
       )}
 
       {/*
-        A redundant facet keeps its heading and states why it is inert, rather
-        than returning null. Silently dropping it makes the filter look
-        unavailable instead of inapplicable, which is the more confusing
-        reading. Search and the option list are both suppressed.
+        A redundant facet keeps its heading and says why it is inert, rather than
+        returning null. Dropping it silently makes the filter look unavailable
+        instead of inapplicable, which is the more confusing reading.
       */}
       {redundantNote ? (
         <p className="text-xs text-muted-foreground">{redundantNote}</p>
@@ -537,16 +529,14 @@ const FacetSection = ({
 }
 
 /**
- * Wordmark for the scraper route.
- *
- * This route deliberately has no top navbar, so the product identity lives in
- * the sidebar. That also makes it the only route home on mobile, where the
- * sidebar is a Sheet with no other navigation in it.
+ * Wordmark for the scraper route. That route has no top navbar, so the product
+ * identity lives in the sidebar, which makes it the only route home on mobile
+ * where the sidebar is a Sheet.
  */
 const SidebarWordmark = () => (
-  /* `group` is what the door's hover animation hangs off, in globals.css. This
-     element also sits inside a sidebar group, but that one keys off a data
-     attribute rather than the class, so the two do not collide. */
+  /* `group` is what the door's hover animation hangs off, in globals.css.
+     A sidebar group also wraps this, but that one keys off a data attribute
+     rather than the class, so the two do not collide. */
   <Link
     href="/"
     className="group flex min-w-0 flex-1 items-center gap-2 rounded-md text-sm font-semibold tracking-tight group-data-[collapsible=icon]:hidden"
@@ -569,14 +559,12 @@ type SidebarHeaderBlockProps = {
 /**
  * The sidebar's two header rows, shared by both states.
  *
- * The collapse trigger sits on the identity row, to the right of the wordmark,
- * because that is what it acts on: the whole panel. Sitting it beside the
- * "Filters" label made it read as a control over the filters alone.
+ * The collapse trigger sits on the identity row because that is what it acts
+ * on: the whole panel. Beside the "Filters" label it read as a control over the
+ * filters alone.
  *
- * A separator divides the identity row from the filter controls, which are a
- * separate group with their own heading. Both rows bleed to the sidebar edges
- * and carry their own inline padding, so the divider spans the full width while
- * the text stays inside the margins.
+ * Rows bleed to the sidebar edges and carry their own padding, so the divider
+ * spans the full width while the text stays inside the margins.
  */
 const SidebarHeaderBlock = ({
   active,
@@ -586,19 +574,17 @@ const SidebarHeaderBlock = ({
 }: SidebarHeaderBlockProps) => (
   <SidebarHeader className="gap-0 p-0">
     {/*
-      A 3rem rail has about 16px of content width once the inline padding is
-      taken, which is not enough for a wordmark badge and a 28px trigger side by
-      side -- they overlapped. So when collapsed the wordmark gives way entirely
-      and the trigger becomes the single, centred control that expands the rail.
+      A 3rem rail leaves about 16px of content width, not enough for a wordmark
+      badge and a 28px trigger side by side; they overlapped. So when collapsed
+      the wordmark gives way and the trigger becomes the single centred control.
     */}
     <div className="flex items-center gap-2 px-4 py-3 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
       <SidebarWordmark />
 
       {/*
-        Desktop only. Below `md` this sidebar is a Sheet that only mounts once
-        open, so a trigger inside it could never be clicked and the filters
-        would be unreachable. The toolbar renders the mobile equivalent, so
-        exactly one of the two is present at any width.
+        Desktop only. Below `md` this sidebar is a Sheet that mounts only once
+        open, so a trigger inside it could never be clicked. The toolbar renders
+        the mobile equivalent, so exactly one of the two is present at any width.
       */}
       <SidebarTrigger
         className="hidden size-7 shrink-0 md:inline-flex"
@@ -610,9 +596,8 @@ const SidebarHeaderBlock = ({
 
     <div className="flex items-center justify-between gap-2 px-4 py-3">
       {/*
-        Kept in the accessibility tree when collapsed via `sr-only` rather than
-        hidden outright: the rail still belongs to a labelled region, and
-        dropping the heading would leave the panel unnamed.
+        `sr-only` rather than hidden when collapsed: the rail still belongs to a
+        labelled region, and dropping the heading would leave the panel unnamed.
       */}
       <h2 className="text-sm font-medium group-data-[collapsible=icon]:sr-only">
         Filters
@@ -649,11 +634,9 @@ export const FilterSidebar = ({
   const activeCount = countActiveFilters(filters)
 
   /**
-   * Per-facet explanation for a facet that cannot narrow results.
-   *
-   * Gymshark publishes one vendor across 5,000 products and no tags at all, so
-   * both of those checkboxes were either a no-op or absent with no
-   * explanation. Keyed by facet so each section can render its own note.
+   * Per-facet explanation for a facet that cannot narrow results. Gymshark
+   * publishes one vendor across 5,000 products and no tags at all, so those
+   * checkboxes were either a no-op or absent with no explanation.
    */
   const redundantNotes = React.useMemo(() => {
     const notes: Partial<Record<RedundantFacet["facet"], string>> = {}
@@ -697,12 +680,9 @@ export const FilterSidebar = ({
   }, [onFiltersChange])
 
   /**
-   * How to switch each individual filter off, keyed by facet.
-   *
-   * Passed into `getAppliedChips` so the chip list can be a pure function of
-   * `Filters` plus these callbacks. That keeps the facet enumeration in
-   * `lib/filters`, where it is testable without rendering the sidebar, and
-   * stops it drifting from `countActiveFilters`.
+   * How to switch each filter off, keyed by facet. Passed into `getAppliedChips`
+   * so the chip list stays a pure function of `Filters`, which keeps the facet
+   * enumeration in `lib/filters` and out of the sidebar.
    */
   const facetRemovers = React.useMemo<FacetRemovers>(
     () => ({

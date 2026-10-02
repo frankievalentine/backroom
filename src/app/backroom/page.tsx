@@ -11,23 +11,15 @@ export const metadata: Metadata = {
 
 /**
  * The `?domain=` param is read here rather than with `useSearchParams` in the
- * client.
+ * client, which keeps the route a server component so the shell, its `<main>`
+ * and its heading ship in the initial HTML.
  *
- * That keeps the route a server component, so the shell, its `<main>` landmark
- * and its heading all ship in the initial HTML. Reading the param from the
- * client instead would push the entire page behind a Suspense boundary, and a
- * reader arriving without JavaScript would get nothing but skeletons.
- *
- * The read is passed down as a promise and never awaited here. That is what lets
- * the page stream: this component returns immediately, the client renders the
- * full workspace, and only the product grid waits -- behind a Suspense boundary
- * inside CatalogViewer, not around it.
- *
- * Awaiting the read in this component would be the obvious thing to do and is
- * wrong. It would put the whole route behind one boundary, so the sidebar,
- * toolbar, `<main>` and `<h1>` would all be replaced by a skeleton for the full
- * duration of the walk. Measured on a 5,000-product store that is ten seconds
- * with no landmark and no heading on screen.
+ * The read is passed down as a promise and never awaited here, which is what lets
+ * the page stream: this returns immediately, and only the product grid waits,
+ * behind a Suspense boundary inside CatalogViewer. Awaiting it here would put the
+ * whole route behind one boundary, so the sidebar, toolbar, `<main>` and `<h1>`
+ * would be skeletons for the full walk -- measured at ten seconds on a
+ * 5,000-product store, with no landmark and no heading on screen.
  */
 export default async function BackroomPage({
   searchParams,

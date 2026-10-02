@@ -1,21 +1,17 @@
 /**
- * Curated ranking of Shopify storefronts shown on the home page.
+ * Curated ranking of Shopify storefronts on the home page. Ordering is editorial,
+ * not measured traffic rank.
  *
- * Ordering is editorial, not measured traffic rank.
+ * Every domain was verified to serve a parseable `/products.json` whose first
+ * product belongs to that brand. That check matters: `shopify.com` and
+ * `peloton.com` 404 on products.json, and `ridge.com`, `warbyparker.com` and
+ * `bombas.com` answer 403 or 429. A list built from brand names alone sends
+ * users to dead ends.
  *
- * Every domain here was verified to serve a parseable `/products.json` whose
- * first product actually belongs to that brand. That check matters: several
- * famous storefronts fail it. `kith.com` serves On Running's catalog,
- * `shopify.com` and `peloton.com` 404 on products.json, and `ridge.com`,
- * `warbyparker.com` and `bombas.com` answer 403 or 429. A list built from brand
- * names alone sends users to dead ends.
- *
- * `products` was measured on VERIFIED_ON by running this app's own scrape
- * against each store, so the numbers match what a user will actually see.
- * Stores marked `productsAreFloor` hit the scraper's 5,000-product pagination cap
- * cap, so their real catalog is larger than the number shown. Counts drift;
- * re-run before trusting them, and drop any store that stops serving
- * products.json.
+ * `products` was measured on VERIFIED_ON with this app's own scrape, so the
+ * numbers match what a user sees. `productsAreFloor` means the walk hit the
+ * 5,000-product cap, so the real catalog is larger. Counts drift: re-run before
+ * trusting them and drop any store that stops serving products.json.
  */
 export const VERIFIED_ON = "2026-10-01"
 

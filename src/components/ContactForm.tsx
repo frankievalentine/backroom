@@ -14,28 +14,18 @@ type SendState =
   | { status: "error"; message: string }
 
 /**
- * Contact form for merchant and rights-holder requests.
- *
- * This is the one email that must never be lost, so two decisions shape it.
- *
- * The form hides itself entirely when no API key is configured, rather than
- * rendering a control that fails on submit. A takedown request sent to a dead
- * address or a failed send is a rights-holder whose store stays in the service
- * because they assumed it had been actioned.
- *
- * On success the form is replaced by a confirmation rather than left in place,
- * because a still-editable form after a successful send invites a double submit.
- *
- * Copy follows the house rules: the button names the action, every field keeps a
- * visible label because placeholders vanish on input, and errors state the fix
- * rather than reporting a failure.
+ * Contact form for merchant and rights-holder requests. The one email that must
+ * never be lost, so two decisions shape it: it hides entirely when no API key is
+ * configured, rather than rendering a control that fails on submit, and it is
+ * replaced by a confirmation on success, because a still-editable form after a
+ * send invites a double submit.
  */
 export const ContactForm = ({
   kind,
   configured,
 }: {
-  /** Which page the form is on, so the email can be triaged. */
-  kind: "privacy" | "rights"
+  /** What the sender wants, so a request can be triaged without reading it. */
+  kind: "general" | "privacy" | "rights"
   /** False when no API key is set. The form does not render at all. */
   configured: boolean
 }) => {
@@ -127,22 +117,31 @@ export const ContactForm = ({
             id="contact-domain"
             name="domain"
             type="text"
-            placeholder="yourstore.com"
+            placeholder="Optional"
+            aria-invalid={error ? true : undefined}
             disabled={sending}
           />
         </div>
       </div>
 
+      {/*
+        Label and placeholder are generic because the form serves three
+        unrelated requests: featuring a store, removal, and a general question.
+        "What would you like us to change?" assumed every request was a
+        complaint, which is wrong for the two that are not.
+
+        The page's own headings already say which kind of request each is, and
+        the domain field stays optional so a general question does not force a
+        storefront into the message.
+      */}
       <div className="space-y-2">
-        <Label htmlFor="contact-message">
-          What would you like us to change?
-        </Label>
+        <Label htmlFor="contact-message">Your message</Label>
         <Textarea
           id="contact-message"
           name="message"
           required
           rows={5}
-          placeholder="Tell us what you would like removed, and why."
+          placeholder="Tell us what you need."
           aria-invalid={error ? true : undefined}
           disabled={sending}
         />

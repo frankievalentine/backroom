@@ -9,13 +9,12 @@ type SiteHeaderProps = {
   /** Route context shown next to the wordmark, e.g. the loaded domain. */
   parent?: string
   /**
-   * Set on the catalog route.
+   * Set on the catalog route, where the call to action would link the page to
+   * itself.
    *
-   * The call to action into the tool is suppressed there, because it would link
-   * the page to itself. This has to be an explicit signal rather than inferred
-   * from `parent`: with no store loaded there is no parent either, and inferring
-   * from that left the self-link showing on exactly the page it should never
-   * appear on.
+   * Explicit rather than inferred from `parent`: with no store loaded there is
+   * no parent either, and inferring from that left the self-link showing on
+   * exactly the page it should never appear on.
    */
   hideToolLink?: boolean
   /** Right-hand slot. Overrides the default call to action entirely. */
@@ -26,9 +25,8 @@ type SiteHeaderProps = {
 /**
  * Sticky app header.
  *
- * Intentionally renders no heading. Each route owns its own `h1` -- on the home
- * page that is the hero headline, not the wordmark -- so the header uses a plain
- * link to avoid two competing top-level headings per document.
+ * Renders no heading. Each route owns its own `h1` -- on the home page the hero
+ * headline, not the wordmark -- so a heading here would be a second one.
  */
 export const SiteHeader = ({
   parent,

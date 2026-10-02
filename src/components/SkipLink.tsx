@@ -1,12 +1,9 @@
 import { cn } from "@/lib/utils"
 
 /**
- * First focusable element on a page.
- *
- * The app puts a sticky header and a full-height filter sidebar in front of the
- * content, so without this a keyboard user tabs through the whole chrome on
- * every page before reaching anything. Hidden until focused, then parked in the
- * top-left where it cannot overlap the header.
+ * First focusable element on a page. A sticky header and a full-height sidebar sit
+ * in front of the content, so without this a keyboard user tabs through the whole
+ * chrome on every page before reaching anything.
  */
 export const SkipLink = ({
   targetId = "main-content",

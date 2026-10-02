@@ -17,7 +17,13 @@ export const FAQ_ENTRIES: readonly FaqEntry[] = [
     id: "which-stores",
     question: "Which stores can I explore?",
     answer:
-      "Any storefront running on Shopify. We detect the platform automatically and read its public products.json endpoint, which most Shopify themes expose. WooCommerce, BigCommerce, Magento and custom storefronts are not supported yet, and we would rather say so than return an empty list.",
+      "Most storefronts running on Shopify. We detect the platform automatically and read its public products.json endpoint, which the large majority of stores expose without a key or a login. WooCommerce, BigCommerce, Magento and custom storefronts are not supported, and we would rather say so than return an empty list.",
+  },
+  {
+    id: "blocked-stores",
+    question: "What if a store won't load?",
+    answer:
+      "Usually because the store blocks automated requests, not because it is unsupported. Some Shopify stores sit behind bot protection, some have the catalog endpoint switched off, and some run a custom or headless storefront with no public catalog to read. A store can also simply be on WooCommerce or Magento, which we do not support. When a store won't load we say so and stop there — we do not try to get around a store that has declined the request.",
   },
   {
     id: "is-it-legal",
@@ -41,7 +47,13 @@ export const FAQ_ENTRIES: readonly FaqEntry[] = [
     id: "opt-out",
     question: "I run a store. How do I get removed?",
     answer:
-      "Email us and we will add your domain to a blocklist. It is a short list and we honour requests without argument, so you do not need to explain the legal position. The change goes live on the next deploy.",
+      "Use the contact form and we will add your domain to a blocklist. It is a short list and we honour requests without argument, so you do not need to explain the legal position. The change goes live on the next deploy.",
+  },
+  {
+    id: "feature-your-store",
+    question: "Can I feature my store on Backroom?",
+    answer:
+      "Yes. The home page has a sponsored section, and every store in it is a paid placement. We do not mix in free editorial picks, so a Sponsored badge means exactly what it says. A placement is a card and a link: it does not change how your store is filtered, ranked, or counted, and it does not affect whether your store loads. Use the contact form and we will send you details.",
   },
   {
     id: "stored-anywhere",
@@ -54,12 +66,6 @@ export const FAQ_ENTRIES: readonly FaqEntry[] = [
     question: "What happens with a store that has thousands of products?",
     answer:
       "We walk the paginated catalog rather than stopping at the first page. If a store is large enough to hit our 5,000-product ceiling we say so on screen and mark the count as a lower bound, rather than quietly showing you a partial catalog that looks complete.",
-  },
-  {
-    id: "blocked-stores",
-    question: "Some store says it is not Shopify. Why?",
-    answer:
-      "Usually because the store is not on Shopify, or because its firewall blocks server-side requests. A handful of large retailers reject automated traffic outright. We cannot work around that, and we would rather show the failure than mask it.",
   },
   {
     id: "export-data",

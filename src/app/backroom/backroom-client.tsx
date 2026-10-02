@@ -39,13 +39,10 @@ const SIDEBAR_STATE_KEY = "backroom:sidebar-open"
  * Persisted sidebar open/collapsed state.
  *
  * The registry's SidebarProvider writes a `sidebar_state` cookie but never reads
- * it back, so the initial state comes only from `defaultOpen` and a collapse does
- * not survive a reload. Controlling the provider from here fixes that without
- * editing the vendored component, which `shadcn add` would overwrite anyway.
- *
- * `null` means "not yet read". Rendering stays uncontrolled until the stored
- * value is known, because reading localStorage during the first render would
- * mismatch the server-rendered markup.
+ * it back, so a collapse does not survive a reload. Controlling it here fixes
+ * that without editing the vendored component. `null` means "not yet read":
+ * rendering stays uncontrolled until the stored value is known, because reading
+ * localStorage during first render would mismatch the server markup.
  */
 const usePersistedSidebar = () => {
   const [open, setOpen] = React.useState<boolean | null>(null)
@@ -101,16 +98,15 @@ export const CatalogViewer = ({
   const { domain, products, status, error, truncated, load } = scrape
 
   /*
-    The hook only takes over once the user does something. Until then the
-    streamed read is the source of truth. Keeping one source per state rather
-    than two that have to be reconciled is the whole of it: `products` is null
-    while idle, which is what tells StreamedProducts to await the promise.
+    The hook only takes over once the user does something; until then the
+    streamed read is the source of truth. One source per state rather than two
+    to reconcile: `products` is null while idle, which is what tells
+    StreamedProducts to await the promise.
 
     `streamed` is the exception. It is the resolved read, lifted here so the
-    sidebar can see it -- the sidebar sits outside the Suspense boundary, so it
-    cannot await the promise itself. Without this it would sit on "Filters
-    appear once a store is loaded" forever while the grid below it showed 60
-    products.
+    sidebar can see it -- the sidebar sits outside the Suspense boundary and
+    cannot await the promise itself, so without this it would sit on "Filters
+    appear once a store is loaded" while the grid below showed 60 products.
   */
   const [streamed, setStreamed] = React.useState<{
     domain: string
@@ -126,12 +122,12 @@ export const CatalogViewer = ({
     Adopts the streamed read once it resolves.
 
     StreamedProducts calls this because it is the only component that knows when
-    the promise settled. It also saves the store here, but only on success: a
-    `?domain=` that turned out not to be Shopify never reaches a saved list.
+    the promise settled. Saves the store on success only, so a `?domain=` that
+    turned out not to be Shopify never reaches a saved list.
 
-    An effect rather than a save during render, because `useSavedSites` defers its
-    localStorage read to an effect too. Saving during render would see an empty
-    list and race the hydration effect that is about to overwrite state with
+    An effect rather than a save during render, because `useSavedSites` defers
+    its localStorage read to an effect too. Saving during render would see an
+    empty list and race the hydration effect about to overwrite state with
     whatever was already stored, dropping the store just added.
   */
   const handleStreamedStoreLoaded = React.useCallback(
@@ -159,9 +155,8 @@ export const CatalogViewer = ({
     async (rawInput: string) => {
       const savedDomain = await load(rawInput)
 
-      // Save the canonical domain the server returned, never the raw input.
-      // This is what prevents "https://www.x.com" and "x.com" landing in the
-      // list as two separate entries.
+      // Save the canonical domain the server returned, never the raw input, so
+      // "https://www.x.com" and "x.com" cannot land as two separate entries.
       if (savedDomain) addSite(savedDomain)
     },
     [addSite, load]
@@ -326,11 +321,9 @@ type StreamedProductsProps = {
 }
 
 /**
- * Awaits the streamed read, then owns the result set.
- *
- * Split out of `CatalogViewer` purely so that `use()` is called in a leaf. The
- * boundary is above this component, so everything the page is made of is already
- * sent and this is the only part that waits.
+ * Awaits the streamed read, then owns the result set. Split out of
+ * `CatalogViewer` purely so `use()` is called in a leaf: the boundary is above
+ * this component, so everything the page is made of is already sent.
  */
 const StreamedProducts = ({
   store,
@@ -360,11 +353,11 @@ const StreamedProducts = ({
   /*
     Report a store that arrived from the home page, once, after it loads.
 
-    The ref guards against re-firing: this component re-renders on every filter
-    change, and `useSavedSites.addSite` dedupes anyway, but a callback that
-    appeared to do nothing on repeat renders would be a trap for whoever reads
-    it next. Guarded on `products` being null so it only ever applies to the
-    streamed read, never to a store the user switched to by hand.
+    The ref guards re-firing: this re-renders on every filter change, and
+    `addSite` dedupes anyway, but a callback that appeared to do nothing on
+    repeat renders would be a trap for whoever reads it next. Guarded on
+    `products` being null so it only applies to the streamed read, never to a
+    store the user switched to by hand.
   */
   const reportedRef = React.useRef(false)
 

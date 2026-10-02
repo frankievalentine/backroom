@@ -1,3 +1,7 @@
+/**
+ * Shopify payload shape and the helpers that read it.
+ */
+
 export type ShopifyImage = {
   id: number
   src: string
@@ -16,7 +20,7 @@ export type ShopifyVariant = {
    * Whether the variant can currently be bought.
    *
    * Present on the public `/products.json` payload, which is the only
-   * availability signal available without an authenticated Admin API call.
+   * availability signal without an authenticated Admin API call.
    */
   available: boolean
 }
@@ -35,10 +39,7 @@ export type ShopifyProduct = {
   images: ShopifyImage[]
 }
 
-/**
- * Shopify returns `tags` as a comma separated string. Split once here so
- * consumers never repeat the parse (and never forget to trim).
- */
+/** Tags arrive as a comma separated string. Parsed once, always trimmed. */
 export const parseTags = (tags: unknown): string[] => {
   if (typeof tags !== "string" || !tags.trim()) return []
 
@@ -51,9 +52,8 @@ export const parseTags = (tags: unknown): string[] => {
 /**
  * Whether any variant can currently be bought.
  *
- * A product is only purchasable if at least one of its variants is available.
- * Merely having a price is not enough: sold-out products keep their real price
- * in the payload, so price cannot be used as a proxy for availability.
+ * Price cannot stand in for availability: sold-out products keep their real
+ * price in the payload.
  */
 export const isInStock = (product: ShopifyProduct): boolean =>
   product.variants.some((variant) => variant.available)
@@ -62,20 +62,13 @@ export const isSoldOut = (product: ShopifyProduct): boolean =>
   !isInStock(product)
 
 /**
- * Whether the product is available at no cost.
- *
- * Distinct from sold out, and worth distinguishing: a genuinely free product
- * showing "$0.00" reads as a bug, but showing "Free" does not. Zero-priced and
- * unavailable together mean sold out, which `isSoldOut` already catches.
+ * Available at no cost. Distinct from sold out, and worth the distinction: a
+ * genuinely free product showing "$0.00" reads as a bug, "Free" does not.
  */
 export const isFree = (product: ShopifyProduct): boolean =>
   isInStock(product) && getLowestVariantPrice(product.variants) === 0
 
-/**
- * The lowest variant price, used for filtering and display. Falls back to the
- * highest variant so a product with only `compare_at_price` data still shows a
- * number rather than nothing.
- */
+/** Lowest variant price, for filtering and display. Null when none parse. */
 export const getLowestVariantPrice = (
   variants: ShopifyVariant[]
 ): number | null => {
@@ -126,8 +119,8 @@ export const formatPrice = (value: number | null): string | null => {
 }
 
 /**
- * Percentage saved versus the compare-at price, or null when the product is not
- * discounted. Guarded against a zero or inverted compare-at price.
+ * Percentage saved versus the compare-at price, or null when not discounted.
+ * Guards against a zero or inverted compare-at price.
  */
 export const getDiscountPercent = (
   variant: ShopifyVariant | null
@@ -144,12 +137,11 @@ export const getDiscountPercent = (
 }
 
 /**
- * Normalise a raw `products.json` payload into the shape the UI expects.
+ * Normalise a raw `products.json` payload.
  *
- * Shopify's response varies by theme and app version: `images` can be missing
- * or empty, `image` can be null, and several fields are absent entirely. Doing
- * this once at the boundary keeps every consumer working with one predictable
- * shape.
+ * The response varies by theme and app version: `images` can be missing, `image`
+ * can be null, and several fields are absent entirely. Doing this once at the
+ * boundary keeps every consumer on one predictable shape.
  */
 export const normalizeProduct = (raw: unknown): ShopifyProduct | null => {
   if (!raw || typeof raw !== "object") return null
@@ -176,7 +168,7 @@ export const normalizeProduct = (raw: unknown): ShopifyProduct | null => {
         .filter((image) => image.src.length > 0)
     : []
 
-  // Older themes only send a single `image`; fold it in so the UI has one path.
+  // Older themes send a single `image`; fold it in so the UI has one path.
   if (!images.length && product.image && typeof product.image === "object") {
     const image = product.image as Record<string, unknown>
 
@@ -206,8 +198,8 @@ export const normalizeProduct = (raw: unknown): ShopifyProduct | null => {
             typeof variant.compare_at_price === "string"
               ? variant.compare_at_price
               : null,
-          // Absent on some older themes; treat an unknown variant as available
-          // so a store that omits the flag does not appear fully sold out.
+          // Absent on older themes. Treated as available so a store that omits
+          // the flag does not read as entirely sold out.
           available: variant.available !== false,
         }))
     : []

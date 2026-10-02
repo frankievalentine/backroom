@@ -5,14 +5,11 @@ import { TOOL_ROUTE } from "@/lib/brand"
 import { formatCatalogSize, type PopularSite } from "@/lib/popular-sites"
 
 /**
- * A ranked store tile.
- *
- * One layout for every instance, deliberately. An earlier version had a `featured`
- * variant that switched to a two-column grid and moved a badge into an absolute
- * corner, which meant no two tiles in a row shared an internal alignment. Cards
- * in a grid only read as a grid when their edges line up, so the structure here
- * is fixed and the differing content lengths are absorbed by `mt-auto` on the
- * footer row, which pins it to the bottom edge regardless of title length.
+ * A ranked store tile. One layout for every instance: an earlier version had a
+ * `featured` variant that switched to a two-column grid and moved a badge into an
+ * absolute corner, so no two tiles in a row shared an alignment. Cards in a grid
+ * only read as a grid when their edges line up, and differing content lengths are
+ * absorbed by `mt-auto` on the footer row.
  */
 export const SiteCard = ({ site }: { site: PopularSite }) => (
   <li className="group/tile relative flex h-full flex-col rounded-xl border bg-card p-4 transition-colors hover:border-foreground/25 focus-within:border-ring">

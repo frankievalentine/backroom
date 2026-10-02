@@ -45,16 +45,13 @@ const SITE_PICKER_LABEL = "Explore a store"
 /**
  * Store picker: a validated free-text field plus a popover listing saved stores.
  *
- * Deliberately a Popover rather than a DropdownMenu. A menu owns keyboard focus
- * and expects one action per row; the previous implementation nested two
- * `<button>` elements inside a single menu item, which left the remove button
- * unreachable by keyboard. Rows in a popover are ordinary content, so each one
- * can expose its own controls.
+ * A Popover rather than a DropdownMenu, because a menu owns keyboard focus and
+ * expects one action per row; the previous version nested two `<button>` elements
+ * in a single menu item, leaving the remove button unreachable by keyboard.
  *
- * The label is synced to `selectedDomain` below. A store opened from the home
- * page arrives as `?domain=`, so the server loads and streams it, and by the
- * time this mounts the field would otherwise still read empty -- leaving the
- * toolbar looking like nothing was selected while the whole grid sat below it.
+ * The label is synced to `selectedDomain` below: a store opened from the home page
+ * arrives as `?domain=`, so by the time this mounts the field would otherwise read
+ * empty while the whole grid sat below it.
  */
 export const SitePicker = ({
   sites,

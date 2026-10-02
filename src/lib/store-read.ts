@@ -12,21 +12,13 @@ import {
 /**
  * Server-side store reads.
  *
- * This is the module the App Router route calls directly, replacing the old
- * path where the client POSTed to /api/scrape from a useEffect. That path could
- * not stream: the fetch only started after hydration, and every product crossed
- * the wire as client JavaScript before the Suspense fallback had anything to
- * wait on.
+ * Called by the App Router route directly, so the promise can be handed to a
+ * client component that unwraps it with `use()`: the shell paints immediately
+ * and products stream in when the read resolves. The old client-POST path could
+ * not stream, because the fetch only started after hydration.
  *
- * Called from a server component, the promise is handed to a client component
- * that unwraps it with `use()`. The shell paints immediately and the products
- * stream in when the read resolves, which is the pattern the App Router docs
- * prescribe for slow data.
- *
- * `cache` is React's request-scoped memo, not a shared store. It exists to stop
- * two components in the same render from walking the same store twice. It is
- * discarded when the request ends and gives no cross-user reuse -- the durable
- * options are `use cache` for a Next-managed store or your own Redis.
+ * `cache` is React's request-scoped memo, not a shared store. It stops one
+ * render walking the same store twice and gives no cross-user reuse.
  */
 
 export type StoreReadSuccess = {
@@ -48,12 +40,8 @@ export type StoreReadFailure = {
 export type StoreReadResult = StoreReadSuccess | StoreReadFailure
 
 /**
- * Normalise without doing any network work.
- *
- * Exported separately so the route can decide whether to start a read at all
- * before spending anything, and so a malformed input fails fast in the server
- * component rather than suspending on a promise that will only ever resolve to
- * an error.
+ * Normalise with no network work, so the route can decide whether to start a
+ * read at all and a bad input fails before anything is awaited.
  */
 export const readDomain = normalizeDomain
 
@@ -62,9 +50,6 @@ export const readStore = cache(
     const normalized = normalizeDomain(input)
 
     if (!normalized.ok) {
-      // `optedOut` rides along so the page can show the message as the merchant
-      // framed it. The text is the same either way, but a tagged result means a
-      // future change can style it differently without a copy change.
       return { ok: false, domain: null, error: normalized.reason }
     }
 

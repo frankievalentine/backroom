@@ -1,23 +1,17 @@
 /**
  * Shopify CDN image resizing.
  *
- * Every Shopify storefront serves product imagery from cdn.shopify.com, and that
- * CDN resizes on request: appending `_600x600` before the file extension returns
- * a 600px version. Measured against live storefronts this is the largest
- * performance win available in this app, and it needs no allowlist, no proxy
- * and no account.
+ * Every storefront serves imagery from cdn.shopify.com, and that CDN resizes on
+ * request: `_600x600` before the extension returns a 600px version.
  *
  *   Allbirds  4000x4000 PNG  2,688,385 bytes ->  26,348 bytes  (102x)
  *   Gymshark  1692x2018 JPG    182,370 bytes ->  18,238 bytes  (10x)
  *
- * Both render into a grid card about 300px wide, so the full-size file was being
- * fetched at more than ten times the pixels it needed.
+ * Both render into a card about 300px wide.
  *
- * Why not next/image: its default loader only optimises hosts listed in
- * `remotePatterns`, and the host is whichever store the user typed. Enumerating
- * them is impossible, and a wildcard would turn this app into an open image proxy
- * for anyone who wanted one. The CDN already does the resizing, so asking it
- * directly is both cheaper and safer than proxying through our own optimiser.
+ * Not `next/image`: its default loader only optimises hosts in `remotePatterns`,
+ * and the host is whichever store the user typed. A wildcard would make this an
+ * open image proxy.
  */
 
 /** Widths offered to the browser. The widest caps the largest request. */
@@ -25,10 +19,7 @@ const WIDTHS = [160, 320, 480, 640, 800] as const
 
 const LARGEST = WIDTHS[WIDTHS.length - 1]
 
-/**
- * Mirror of the product grid's breakpoints, so a card is described honestly.
- * Four columns at xl, three at lg, two at sm.
- */
+/** Mirrors the product grid's breakpoints: four at xl, three at lg, two at sm. */
 const SIZES =
   "(min-width: 1280px) 300px, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
 
@@ -54,10 +45,9 @@ const resized = (src: string, width: number): string | null => {
   if (!segment) return null
 
   /*
-    The extension is preserved exactly. Shopify converts between formats, but
-    only when the extension matches the source: a .png asked for as .webp 404s,
-    as does a .jpg asked for as .png. Format negotiation is left to the Accept
-    header, which already gets a modern browser AVIF or WebP from the CDN.
+    The extension is preserved exactly. Shopify only converts when the extension
+    matches the source: a .png asked for as .webp 404s. Format negotiation is
+    left to the Accept header, which already gets AVIF or WebP.
   */
   const extension = segment.match(/\.([a-z0-9]+)$/i)?.[1]
 
@@ -88,10 +78,10 @@ export type ResolvedImage = {
 /**
  * Resolves a storefront image URL into a responsive source set.
  *
- * Falls back to the original URL whenever a resize is not possible: a
- * non-Shopify host, a URL with no usable file name, or a source smaller than the
- * largest candidate. Shopify never upscales, so asking for more pixels than the
- * source has returns the original file and costs a request for nothing.
+ * Falls back to the original for a non-Shopify host, an unusable file name, or a
+ * source smaller than the largest candidate. Shopify never upscales, so asking
+ * for more pixels than exist returns the original and costs a request for
+ * nothing.
  */
 export const resolveProductImage = ({
   src,

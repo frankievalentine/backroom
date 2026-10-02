@@ -1,29 +1,17 @@
 /**
  * The Backroom mark: a door in a doorway, swinging slowly open and shut.
  *
- * Extracted so the site header and the catalog sidebar cannot drift apart. Both
- * previously rendered the same badge inline, which is exactly the kind of
- * duplication that ends with one of them a release behind.
+ * Extracted so the site header and the catalog sidebar cannot drift apart.
+ * Decorative: every caller sits it beside the wordmark, so it is `aria-hidden`.
  *
- * The glyph is decorative. Every caller sits it beside the "Backroom" wordmark
- * or a link label, so it is `aria-hidden` and adds nothing for a screen reader.
+ * The leaf is filled, not stroked, and that is load-bearing. Measured on the real
+ * page, `rotateY` collapsed a 2-unit stroke from 9px to 2.18px, a 76% squash that
+ * read as a stroke-width bug. A solid panel squashes the way a real object in
+ * perspective does. `vector-effect: non-scaling-stroke` holds the width steady
+ * but leaves the leaf looking shut, so it is not a fix.
  *
- * The leaf is FILLED, not stroked, and that is load-bearing. A stroke cannot be
- * foreshortened by a 3D transform without deforming along with the geometry it
- * outlines -- measured on the real page, rotateY collapsed the painted width of
- * a 2-unit stroke from 9px to 2.18px, a 76% squash that read as a stroke-width
- * bug. Filling the leaf sidesteps it: a solid panel squashes the way a real
- * object in perspective does, which is what the eye expects. vector-effect:
- * non-scaling-stroke holds the width steady but leaves the leaf looking shut
- * rather than open, so it is not a fix.
- *
- * The knob is a second subpath in the same <path> with fill-rule="evenodd",
- * which punches a hole through the leaf so whatever is behind shows through.
- * A separate stroked circle would have the same deformation problem.
- *
- * NOTE: src/app/icon.svg is this same geometry frozen closed, since a favicon
- * cannot animate. An SVG icon cannot read the page's custom properties, so the
- * colours there are literals -- if the geometry changes here, change it there.
+ * The knob is a second subpath under `fill-rule="evenodd"`, punching a hole
+ * through the leaf; a separate stroked circle would deform the same way.
  */
 
 /** The leaf outline, and the knob as a subpath of the same path. */
@@ -42,8 +30,8 @@ export const BrandMark = () => (
     <svg viewBox="0 0 24 24" className="size-5">
       <path d={OPENING_PATH} fill="currentColor" opacity={0.16} />
 
-      {/* Hinged on its left edge. The swing, the play-once-on-load and the
-          reduced-motion opt-out all live in globals.css under .brand-door-leaf. */}
+      {/* The swing, the play-once on load and the reduced-motion opt-out live in
+          globals.css under .brand-door-leaf. */}
       <g className="brand-door-leaf">
         <path d={LEAF_PATH} fill="currentColor" fillRule="evenodd" />
       </g>

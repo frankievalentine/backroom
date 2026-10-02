@@ -1,24 +1,14 @@
 /**
  * Domain handling for user-supplied store URLs.
  *
- * Every stored domain is normalised through `normalizeDomain` so that
- * "https://www.Allbirds.com/", "allbirds.com" and "ALLBIRDS.COM" all collapse
- * to the single value "allbirds.com". This is what keeps the saved-sites list
- * free of duplicates and what makes product URLs safe to build downstream.
- */
-
-/**
- * Domain handling for user-supplied store URLs.
+ * Every stored domain is normalised here so "https://www.Allbirds.com/",
+ * "allbirds.com" and "ALLBIRDS.COM" collapse to one value, which keeps the
+ * saved-sites list free of duplicates and makes product URLs safe to build.
  *
- * Every stored domain is normalised through `normalizeDomain` so that
- * "https://www.Allbirds.com/", "allbirds.com" and "ALLBIRDS.COM" all collapse
- * to the single value "allbirds.com". This is what keeps the saved-sites list
- * free of duplicates and what makes product URLs safe to build downstream.
- *
- * This is the single gate every outbound request passes through, so it is also
- * where merchant opt-outs are enforced. Both checks live here rather than at the
- * call sites: a filter that has to be remembered at each fetch site is a filter
- * that eventually gets missed at one of them.
+ * This is also the single gate every outbound request passes through, so SSRF
+ * blocking and merchant opt-outs both live here rather than at the call sites.
+ * A filter that has to be remembered at each fetch site is one that eventually
+ * gets missed at a few of them.
  */
 
 import { isOptedOut, OPTED_OUT_MESSAGE } from "@/lib/opt-out"
@@ -45,19 +35,18 @@ const BLOCKED_HOST_SUFFIXES = [
 export type NormalizeResult =
   | { ok: true; domain: string }
   /**
-   * `optedOut` is distinct from `blocked` on purpose. A blocked host is one we
-   * will never fetch for security reasons and the user should not learn why.
-   * An opted-out host is a merchant exercising a documented request, so we say
-   * so plainly rather than disguising a policy decision as a technical error.
+   * `optedOut` is separate from `blocked` on purpose. A blocked host is never
+   * fetched for security reasons and the user should not learn why; an opted-out
+   * host is a merchant exercising a documented request, and says so.
    */
   | { ok: false; reason: string; optedOut?: boolean }
 
 /**
  * Strip protocol, credentials, `www.`, paths, ports and trailing dots, then
- * validate the result as a plausible public hostname.
+ * validate as a plausible public hostname.
  *
- * Returns a discriminated result rather than a bare string so callers have to
- * deal with the invalid case explicitly.
+ * Returns a discriminated result rather than a bare string so callers must
+ * handle the invalid case.
  */
 export const normalizeDomain = (input: string): NormalizeResult => {
   const trimmed = input.trim()
@@ -66,8 +55,8 @@ export const normalizeDomain = (input: string): NormalizeResult => {
     return { ok: false, reason: "Enter a domain." }
   }
 
-  // Accept bare hosts as well as full URLs. Anything with a scheme other than
-  // http(s) is rejected outright rather than silently coerced.
+  // Accept bare hosts as well as full URLs. Any other scheme is rejected
+  // outright rather than silently coerced.
   const candidate = /^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed)
     ? trimmed
     : `https://${trimmed}`
@@ -101,11 +90,8 @@ export const normalizeDomain = (input: string): NormalizeResult => {
     return { ok: false, reason: "That host cannot be explored." }
   }
 
-  /*
-    Checked last, and only once the hostname is canonical, so a takedown entry
-    only has to be written the way the user would type it. See opt-out.ts for why
-    this exists and why it is a checked-in list.
-  */
+  // Last, and only once canonical, so a takedown entry is written the way a user
+  // would type it.
   if (isOptedOut(hostname)) {
     return { ok: false, reason: OPTED_OUT_MESSAGE, optedOut: true }
   }
@@ -119,7 +105,6 @@ export const isBlockedHostname = (hostname: string): boolean => {
   if (BLOCKED_HOST_SUFFIXES.some((suffix) => hostname.endsWith(suffix)))
     return true
 
-  // IPv4 literals, including the cloud metadata address 169.254.169.254.
   const ipv4 = hostname.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/)
 
   if (ipv4) {

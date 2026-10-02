@@ -9,19 +9,17 @@ import {
   type WebsiteType,
 } from "@/lib/website-detector"
 
-/**
- * No `runtime` export.
- *
- * This handler used to pin `runtime = "nodejs"`, which it did not need: the
- * only thing reaching the outside world is `fetch`, and every helper it calls
- * uses Web-standard APIs and nothing else. There is no `fs`, no `Buffer`, no
- * Node built-in anywhere in the import graph.
- *
- * The pin was a problem for Cloudflare Workers, which has no Node runtime at
- * all. vinext documents that `runtime` does not choose where a route executes
- * -- that belongs to the deployment adapter -- so leaving it in place would
- * have been a false statement about where this code runs, on any platform.
- */
+/*
+  No `runtime` export. This handler used to pin `runtime = "nodejs"` without
+  needing it: the only thing reaching the outside world is `fetch`, and every
+  helper it calls is Web-standard. No `fs`, no `Buffer`, no Node built-in anywhere
+  in the import graph.
+
+  The pin also blocked Cloudflare Workers, which has no Node runtime. vinext
+  documents that `runtime` does not choose where a route executes -- that
+  belongs to the deployment adapter -- so leaving it in would have been a false
+  statement about where this code runs, on any platform.
+*/
 
 const CACHE_TTL_MS = 5 * 60 * 1000
 const MAX_CACHE_ENTRIES = 200
@@ -34,12 +32,10 @@ type CacheEntry = {
 }
 
 /**
- * In-process cache.
- *
- * Note this is per-instance and best-effort: it will not survive across serverless
- * instances and gives no cross-user consistency. It exists to stop one user
- * hammering the same store within a session, nothing more. Swap for Redis or
- * Next's data cache before relying on it at scale.
+ * In-process cache. Per-instance and best-effort: it does not survive across
+ * serverless instances and gives no cross-user consistency. It stops one user
+ * hammering the same store within a session, nothing more. Swap for a shared
+ * cache before relying on it at scale.
  */
 const cache = new Map<string, CacheEntry>()
 
@@ -91,16 +87,14 @@ export async function POST(request: NextRequest) {
     return errorResponse("Domain is required.", 400)
   }
 
-  // Normalising server-side is what guarantees the client stores one canonical
-  // value per store, so duplicates and malformed product URLs cannot reappear.
+  // Normalised server-side, so the client stores one canonical value per store
+  // and duplicates or malformed product URLs cannot reappear.
   const normalized = normalizeDomain(rawDomain)
 
   if (!normalized.ok) {
-    // 451 rather than 400 for a merchant opt-out. The request was well formed
-    // and we are declining it for policy reasons, which is exactly what 451 is
-    // for, and it keeps the two cases distinguishable in logs: a 400 here is
-    // somebody typing a bad domain, a 451 is a documented request from a
-    // merchant.
+    // 451 rather than 400 for an opt-out: the request was well formed and we are
+    // declining for policy, which is what 451 is for. It also keeps the cases
+    // distinguishable in logs -- 400 is a typo, 451 is a merchant request.
     return errorResponse(normalized.reason, normalized.optedOut ? 451 : 400)
   }
 

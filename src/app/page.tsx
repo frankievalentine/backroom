@@ -6,6 +6,7 @@ import { FeaturedCarousel } from "@/components/FeaturedCarousel"
 import { SiteCard } from "@/components/SiteCard"
 import { SiteHeader } from "@/components/SiteHeader"
 import { SkipLink } from "@/components/SkipLink"
+import { TryAStore } from "@/components/TryAStore"
 import {
   Accordion,
   AccordionContent,
@@ -13,15 +14,12 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion"
 import { buttonVariants } from "@/components/ui/button"
-import { BRAND_NAME, TOOL_ROUTE } from "@/lib/brand"
+import { BRAND_NAME, REPOSITORY_URL, TOOL_ROUTE } from "@/lib/brand"
 import { FAQ_ENTRIES } from "@/lib/faq"
-import {
-  getHeroPlacement,
-  getSupportingPlacements,
-  SHOW_FEATURED_SECTION,
-} from "@/lib/featured"
+import { getHeroPlacement, getSupportingPlacements } from "@/lib/featured"
 import { AFFILIATION_DISCLAIMER } from "@/lib/legal"
 import { getPopularSites } from "@/lib/popular-sites"
+import { ROTATION_STORES } from "@/lib/rotation-stores"
 import { cn } from "@/lib/utils"
 
 export const metadata: Metadata = {
@@ -77,24 +75,42 @@ const SectionHeading = ({
 
 export default function HomePage() {
   const popularSites = getPopularSites()
-  const leadSite = popularSites[0]
 
   /*
-    Hero placement leads the carousel, so the most important slot is the one
-    visible without interacting. Passes plain data across the client boundary.
+    Real placements for the carousel, hero first so the most important slot is the
+    one visible without interacting.
 
-    Gated on SHOW_FEATURED_SECTION, and on having a live entry. Every seeded
-    placement is `status: "placeholder"`, which renders as "Sample placement",
-    so with the flag on but nothing live the section would still show a carousel
-    of samples. Both conditions are checked here rather than in featured.ts so
-    this file stays the only place that decides what the home page contains.
+    Empty until a store actually pays. The section still renders when it is,
+    because the carousel fills itself with generic placeholder cards and a pitch,
+    which is a better empty state than an absent section.
   */
-  const featured = SHOW_FEATURED_SECTION
-    ? [getHeroPlacement(), ...getSupportingPlacements()].filter(
-        (placement): placement is NonNullable<typeof placement> =>
-          placement !== null
-      )
-    : []
+  const featured = [getHeroPlacement(), ...getSupportingPlacements()].filter(
+    (placement): placement is NonNullable<typeof placement> =>
+      placement !== null
+  )
+
+  /*
+    A live placement, held permanently by the rotating call to action below.
+    Without this a paying store would be rotated past after four seconds, which is
+    what makes a slot unbuyable.
+  */
+  const featuredStore = featured.find(
+    (placement) => placement.status === "live"
+  )
+
+  /*
+    Stores the rotating call to action cycles through, from their own list rather
+    than the popular grid a few hundred pixels below.
+
+    Reusing the popular list made the rotation look broken: a visitor clicking
+    through the grid met the same stores again in the button above. A separate
+    set also widens what is reachable from the first screen. See
+    lib/rotation-stores.ts for how the domains were verified.
+
+    Plain data crosses the client boundary. A sponsored placement is passed
+    separately and pinned, so a paying store is never rotated past.
+  */
+  const rotatingStores = ROTATION_STORES
 
   return (
     <div className="flex min-h-svh flex-col">
@@ -116,7 +132,7 @@ export default function HomePage() {
         >
           <div className="max-w-xl">
             <h1 className="text-4xl font-semibold tracking-tight text-balance sm:text-5xl">
-              Browse any Shopify store&rsquo;s catalog
+              Browse a Shopify store&rsquo;s catalog
             </h1>
 
             <p className="mt-5 text-lg text-pretty text-muted-foreground">
@@ -134,15 +150,11 @@ export default function HomePage() {
                 <ArrowRightIcon aria-hidden="true" />
               </Link>
 
-              {leadSite && (
-                <Link
-                  href={`${TOOL_ROUTE}?domain=${encodeURIComponent(leadSite.domain)}`}
-                  className={cn(
-                    buttonVariants({ variant: "outline", size: "lg" })
-                  )}
-                >
-                  Try {leadSite.name}
-                </Link>
+              {rotatingStores.length > 0 && (
+                <TryAStore
+                  stores={rotatingStores}
+                  pinnedDomain={featuredStore?.domain}
+                />
               )}
             </div>
           </div>
@@ -182,28 +194,49 @@ export default function HomePage() {
           </ul>
         </section>
 
-        {featured.length > 0 && (
-          <section
-            aria-labelledby="featured-heading"
-            className={cn(
-              "mx-auto w-full border-t px-5 py-16 sm:px-8 sm:py-20",
-              PAGE_WIDTH
-            )}
-          >
-            <SectionHeading
-              id="featured-heading"
-              title="Featured stores"
-              description="Stores worth pointing a new user at."
-            />
+        {/*
+          Renders whenever there is room to sell, which is now always: the
+          carousel pads itself with generic placeholder cards and a pitch, so the
+          section is a better empty state than a missing section.
 
-            <div className="mt-8">
-              <FeaturedCarousel
-                placements={featured}
-                label="Featured and sponsored stores"
-              />
-            </div>
-          </section>
-        )}
+          The heading and its prose are no longer wrapped in a two-column row.
+          That existed to sit a "Feature your store" button beside the heading,
+          and the button now lives on the pitch card instead, where it is next to
+          the thing it is selling.
+        */}
+        <section
+          aria-labelledby="featured-heading"
+          className={cn(
+            "mx-auto w-full border-t px-5 py-16 sm:px-8 sm:py-20",
+            PAGE_WIDTH
+          )}
+        >
+          {/*
+            Heading and description say the same thing on purpose.
+
+            The previous pair promised editorial judgement in one word and
+            admitted to money in the next: "Featured stores" above "Paid slots are
+            labelled Sponsored". A reader is left working out which stores are
+            editorial picks and which are ads, and why the two share a row.
+
+            Every slot here is a paid placement and every one says Sponsored, so
+            "featured" describes the section rather than vouching for a store. The
+            catalogue lives further down the page and stays separate from anything
+            money touches.
+          */}
+          <SectionHeading
+            id="featured-heading"
+            title="Sponsored stores"
+            description="Paid placements on Backroom. Every store here is labelled Sponsored, and every one links straight to its catalog."
+          />
+
+          <div className="mt-8">
+            <FeaturedCarousel
+              placements={featured}
+              label="Featured and sponsored stores"
+            />
+          </div>
+        </section>
 
         <section
           aria-labelledby="popular-heading"
@@ -276,6 +309,10 @@ export default function HomePage() {
             A flat list rather than a row that wraps oddly on mobile. Each label
             says where it goes, since a screen-reader user reaches these as a
             list of links and "Legal" alone would not distinguish them.
+
+            The source link is an external anchor, not a `Link`, so it opens in a
+            new tab and is marked as such for assistive technology. GitHub does
+            not serve an SPA route, so client-side navigation would 404.
           */}
           <nav aria-label="Legal" className="flex flex-wrap gap-x-4 gap-y-2">
             <Link href="/privacy" className="hover:text-foreground">
@@ -284,16 +321,21 @@ export default function HomePage() {
             <Link href="/terms" className="hover:text-foreground">
               Terms
             </Link>
-            {/*
-              Points at the form on the terms page rather than a mailto. A
-              mailto on a domain that does not resolve fails silently while
-              looking like it worked, and this is the one request that must never
-              be lost. The label says where it lands, since a screen-reader user
-              reaches this as a list of links.
-            */}
-            <Link href="/terms#contact" className="hover:text-foreground">
-              Brand or rights-holder requests
+            <Link href="/contact" className="hover:text-foreground">
+              Contact
             </Link>
+            <a
+              href={REPOSITORY_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-foreground"
+            >
+              GitHub
+              <span className="sr-only">
+                {" "}
+                (source code, opens in a new tab)
+              </span>
+            </a>
           </nav>
         </div>
       </footer>

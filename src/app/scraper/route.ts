@@ -1,11 +1,9 @@
 import { NextResponse } from "next/server"
 
 /**
- * The tool used to live at `/scraper`. Redirect rather than 404, so links
- * shared before the rename keep working.
- *
- * Query parameters are carried across, so an old deep link such as
- * `/scraper?domain=cuyana.com` still lands on a loaded store.
+ * The tool used to live at `/scraper`. Redirect rather than 404, carrying the
+ * query string across so an old deep link like `/scraper?domain=cuyana.com` still
+ * lands on a loaded store.
  */
 export function GET(request: Request) {
   const { search } = new URL(request.url)

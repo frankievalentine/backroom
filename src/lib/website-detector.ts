@@ -9,7 +9,7 @@ export type ScrapeResult = {
   pagesFetched: number
 }
 
-/** Cap pagination so a store that always returns a full page cannot spin forever. */
+/** Caps pagination so a store always returning a full page cannot spin forever. */
 const MAX_PAGES = 20
 const PAGE_SIZE = 250
 const DETECT_TIMEOUT_MS = 5000
@@ -18,9 +18,8 @@ const FETCH_TIMEOUT_MS = 10000
 /**
  * Patterns that only appear on a real Shopify storefront.
  *
- * A bare /shopify/i is deliberately absent: it matches any page that merely
- * mentions the word (a blog post, a "migrated from Shopify" notice, a Shopify
- * app badge) and produced false positives.
+ * A bare /shopify/i is deliberately absent: it matches any page merely mentioning
+ * the word, which produced false positives.
  */
 const SHOPIFY_HTML_PATTERNS = [
   /cdn\.shopify\.com/i,
@@ -36,11 +35,11 @@ const hasShopifyMarker = (html: string): boolean =>
   SHOPIFY_HTML_PATTERNS.some((pattern) => pattern.test(html))
 
 /**
- * Decide whether a domain runs Shopify.
+ * Whether a domain runs Shopify.
  *
  * `/products.json` is the reliable signal, so it is tried first with GET rather
- * than HEAD -- a number of stores reject HEAD outright. Only if that fails do we
- * fall back to scanning the homepage markup.
+ * than HEAD, which a number of stores reject outright. Only on failure do we scan
+ * the homepage markup.
  */
 export const detectWebsiteType = async (
   domain: string
@@ -78,9 +77,8 @@ export const detectWebsiteType = async (
 /**
  * Walk `/products.json` until a short page proves we are past the end.
  *
- * A failed page sets `truncated` instead of being swallowed, so the caller can
- * tell "this store has 40 products" apart from "we got 40 of 900 before the
- * network gave up".
+ * A failed page sets `truncated` rather than being swallowed, so the caller can
+ * tell "this store has 40 products" from "we got 40 of 900".
  */
 export const fetchShopifyProducts = async (
   domain: string
@@ -100,7 +98,7 @@ export const fetchShopifyProducts = async (
       )
 
       if (!response.ok) {
-        // A 4xx on page > 1 means we already walked off the end, which is fine.
+        // A 4xx past page 1 means we walked off the end, which is fine.
         if (page === 1) {
           throw new Error(`Store returned HTTP ${response.status}.`)
         }
@@ -140,8 +138,8 @@ export const fetchShopifyProducts = async (
 }
 
 /**
- * Non-Shopify stores are not supported yet. Returning an empty result rather
- * than a fabricated one keeps the UI honest about what it has.
+ * Non-Shopify stores are not supported. Returning empty rather than fabricating
+ * keeps the UI honest about what it has.
  */
 export const fetchGenericProducts = async (
   domain: string

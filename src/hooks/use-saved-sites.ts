@@ -20,13 +20,10 @@ const isSavedSite = (value: unknown): value is SavedSite => {
 /**
  * Persisted list of saved stores.
  *
- * Normalisation happens in two places on purpose. `addSite` normalises before
- * storing, and `readStoredSites` normalises again on load, so a list written by
- * an older build (or hand-edited) cannot reintroduce duplicates.
- *
- * Hydration is deferred to an effect. Reading localStorage during render would
- * produce different markup on the server and the client, which React reports as
- * a hydration mismatch.
+ * Normalising in two places is deliberate: `addSite` before storing and
+ * `readStoredSites` again on load, so a list written by an older build or
+ * hand-edited cannot reintroduce duplicates. The localStorage read is deferred to
+ * an effect, since reading during render is a hydration mismatch.
  */
 export const useSavedSites = () => {
   const [sites, setSites] = React.useState<SavedSite[]>([])
