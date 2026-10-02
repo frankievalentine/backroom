@@ -23,6 +23,7 @@ import {
   parseTags,
   type ShopifyProduct,
 } from "@/lib/shopify"
+import { resolveProductImage } from "@/lib/shopify-image"
 
 const SKELETON_COUNT = 12
 const VISIBLE_TAGS = 3
@@ -32,7 +33,17 @@ type ProductListProps = {
   domain: string
 }
 
-const ProductImage = ({ src, alt }: { src: string | null; alt: string }) => {
+const ProductImage = ({
+  src,
+  alt,
+  width,
+  height,
+}: {
+  src: string | null
+  alt: string
+  width: number | null
+  height: number | null
+}) => {
   // Track which URL failed rather than a bare boolean. Comparing against the
   // current `src` means a new image retries automatically, with no effect to
   // keep in sync -- the previous version needed one and could drift.
@@ -59,12 +70,36 @@ const ProductImage = ({ src, alt }: { src: string | null; alt: string }) => {
     )
   }
 
+  /*
+    Resized through the Shopify CDN rather than next/image, because the host is
+    whichever store the user typed and cannot be allowlisted. See
+    src/lib/shopify-image.ts for the measurements.
+
+    `width`/`height` are the declared source dimensions, not the rendered size.
+    The card is aspect-square and `object-cover`, so the browser only needs the
+    ratio to reserve space; giving it the source ratio avoids reserving a box in
+    the wrong shape for images whose width and height are missing.
+  */
+  const resolved = resolveProductImage({ src, width })
+
+  /*
+    The declared ratio is applied only when the payload carries both dimensions.
+    A source that reports just a width would otherwise reserve a wrong-shaped
+    box, and `aspect-square` already covers the case where neither is known.
+  */
+  const declaredRatio = width && height ? width / height : null
+
   return (
     <img
-      src={src}
+      src={resolved.src}
+      srcSet={resolved.srcSet || undefined}
+      sizes={resolved.sizes || undefined}
       alt={alt}
       loading="lazy"
       decoding="async"
+      width={width ?? undefined}
+      height={height ?? undefined}
+      style={declaredRatio ? { aspectRatio: declaredRatio } : undefined}
       onError={() => setFailedSrc(src)}
       className="aspect-square w-full bg-muted object-cover"
     />
@@ -106,6 +141,8 @@ const ProductCard = ({
         <ProductImage
           src={image?.src ?? null}
           alt={image?.alt || product.title || "Product image"}
+          width={image?.width ?? null}
+          height={image?.height ?? null}
         />
 
         {/*

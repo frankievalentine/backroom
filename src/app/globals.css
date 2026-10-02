@@ -199,6 +199,37 @@
   :focus-visible {
     @apply outline-ring outline-2 outline-offset-2;
   }
+
+  /*
+    Pointer cursor on things that do something.
+
+    The base-nova button recipe ships no `cursor-pointer`, so the sidebar
+    trigger, the saved-stores dropdown and every other Button render with the
+    default arrow. Patching button.tsx would fix those two and then be silently
+    reverted by the next `shadcn add button`, which rewrites vendored files from
+    the registry. This rule lives in the base layer instead, so a re-add cannot
+    take it out.
+
+    Scoped to elements that are actually actionable rather than set globally:
+    `:disabled` and `aria-disabled` are excluded because a control that cannot be
+    used should not advertise that it can. `aria-disabled` is how Base UI marks
+    its own disabled state, which is why it is checked alongside the real
+    attribute.
+  */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  label[for] {
+    @apply cursor-pointer;
+  }
+
+  /* Opt back out where a control is a label or a wrapper rather than a target:
+     a <label for> only gets the pointer when it actually labels a control, and
+     a button that is disabled through Base UI keeps the default arrow. */
+  button:disabled,
+  button[aria-disabled="true"],
+  [role="button"]:disabled {
+    @apply cursor-default;
+  }
 }
 
 /* The swinging door in the brand mark.
