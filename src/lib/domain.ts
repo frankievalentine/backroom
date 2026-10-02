@@ -125,12 +125,36 @@ export const isBlockedHostname = (hostname: string): boolean => {
   return false
 }
 
+/** Referral attribution applied to unpaid scraper product links. */
+export const PRODUCT_UTM_PARAMS = {
+  utm_source: "backroom",
+  utm_medium: "referral",
+  utm_campaign: "product",
+} as const
+
+const appendProductUtmParams = (
+  url: string,
+  medium: string = PRODUCT_UTM_PARAMS.utm_medium
+): string => {
+  const separator = url.includes("?") ? "&" : "?"
+  const params = new URLSearchParams({
+    ...PRODUCT_UTM_PARAMS,
+    utm_medium: medium,
+  })
+
+  return `${url}${separator}${params.toString()}`
+}
+
 /** Build the canonical public product URL for a scraped product. */
 export const buildProductUrl = (
   domain: string,
-  handle: string
+  handle: string,
+  includeUtm = false,
+  medium: string = PRODUCT_UTM_PARAMS.utm_medium
 ): string | null => {
   if (!handle) return null
 
-  return `https://${domain}/products/${encodeURIComponent(handle)}`
+  const url = `https://${domain}/products/${encodeURIComponent(handle)}`
+
+  return includeUtm ? appendProductUtmParams(url, medium) : url
 }

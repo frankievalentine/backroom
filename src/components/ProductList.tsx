@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { buildProductUrl } from "@/lib/domain"
+import { isSponsoredDomain } from "@/lib/featured"
 import { getTypeFacetValue, getVendorFacetValue } from "@/lib/filters"
 import {
   formatPrice,
@@ -110,15 +111,22 @@ const ProductImage = ({
 const ProductCard = ({
   product,
   domain,
+  sponsored,
 }: {
   product: ShopifyProduct
   domain: string
+  sponsored: boolean
 }) => {
   const image = product.images[0] ?? null
   const variant = getPrimaryVariant(product.variants)
   const discount = getDiscountPercent(variant)
   const tags = parseTags(product.tags)
-  const href = buildProductUrl(domain, product.handle)
+  const href = buildProductUrl(
+    domain,
+    product.handle,
+    true,
+    sponsored ? "sponsored" : "referral"
+  )
   const extraTagCount = tags.length - VISIBLE_TAGS
 
   /*
@@ -319,10 +327,19 @@ export const ProductGridSkeleton = () => (
 export const ProductList = ({ products, domain }: ProductListProps) => {
   if (products.length === 0) return null
 
+  // ProductList is already a client component; keep the CMS predicate here and
+  // pass a plain boolean to cards instead of coupling ProductCard to placements.
+  const sponsored = isSponsoredDomain(domain)
+
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
       {products.map((product) => (
-        <ProductCard key={product.id} product={product} domain={domain} />
+        <ProductCard
+          key={product.id}
+          product={product}
+          domain={domain}
+          sponsored={sponsored}
+        />
       ))}
     </div>
   )
