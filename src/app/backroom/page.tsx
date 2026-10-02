@@ -7,6 +7,8 @@ export const metadata: Metadata = {
   title: "Browse stores",
   description:
     "Paste a Shopify storefront URL and browse its full product catalog.",
+  // robots.txt deliberately allows this route so crawlers can read this noindex directive.
+  robots: { index: false, follow: true },
 }
 
 /**
