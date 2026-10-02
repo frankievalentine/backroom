@@ -541,7 +541,7 @@ const StreamedProducts = ({
             <EmptyTitle>No store loaded</EmptyTitle>
             <EmptyDescription>
               Enter a Shopify storefront above to pull its full product catalog.
-              Nothing is stored on our servers.
+              Catalog data is not persistently stored by Backroom.
             </EmptyDescription>
           </EmptyHeader>
         </Empty>
