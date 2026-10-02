@@ -9,7 +9,19 @@ import {
   type WebsiteType,
 } from "@/lib/website-detector"
 
-export const runtime = "nodejs"
+/**
+ * No `runtime` export.
+ *
+ * This handler used to pin `runtime = "nodejs"`, which it did not need: the
+ * only thing reaching the outside world is `fetch`, and every helper it calls
+ * uses Web-standard APIs and nothing else. There is no `fs`, no `Buffer`, no
+ * Node built-in anywhere in the import graph.
+ *
+ * The pin was a problem for Cloudflare Workers, which has no Node runtime at
+ * all. vinext documents that `runtime` does not choose where a route executes
+ * -- that belongs to the deployment adapter -- so leaving it in place would
+ * have been a false statement about where this code runs, on any platform.
+ */
 
 const CACHE_TTL_MS = 5 * 60 * 1000
 const MAX_CACHE_ENTRIES = 200
