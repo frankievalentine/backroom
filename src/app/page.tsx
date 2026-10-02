@@ -20,7 +20,7 @@ import {
   getSupportingPlacements,
   SHOW_FEATURED_SECTION,
 } from "@/lib/featured"
-import { AFFILIATION_DISCLAIMER, LEGAL_CONTACT } from "@/lib/legal"
+import { AFFILIATION_DISCLAIMER } from "@/lib/legal"
 import { getPopularSites } from "@/lib/popular-sites"
 import { cn } from "@/lib/utils"
 
@@ -276,12 +276,16 @@ export default function HomePage() {
             <Link href="/terms" className="hover:text-foreground">
               Terms
             </Link>
-            <a
-              href={`mailto:${LEGAL_CONTACT}`}
-              className="hover:text-foreground"
-            >
+            {/*
+              Points at the form on the terms page rather than a mailto. A
+              mailto on a domain that does not resolve fails silently while
+              looking like it worked, and this is the one request that must never
+              be lost. The label says where it lands, since a screen-reader user
+              reaches this as a list of links.
+            */}
+            <Link href="/terms#contact" className="hover:text-foreground">
               Brand or rights-holder requests
-            </a>
+            </Link>
           </nav>
         </div>
       </footer>
