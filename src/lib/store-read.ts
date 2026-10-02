@@ -62,6 +62,9 @@ export const readStore = cache(
     const normalized = normalizeDomain(input)
 
     if (!normalized.ok) {
+      // `optedOut` rides along so the page can show the message as the merchant
+      // framed it. The text is the same either way, but a tagged result means a
+      // future change can style it differently without a copy change.
       return { ok: false, domain: null, error: normalized.reason }
     }
 

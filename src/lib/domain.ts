@@ -7,6 +7,22 @@
  * free of duplicates and what makes product URLs safe to build downstream.
  */
 
+/**
+ * Domain handling for user-supplied store URLs.
+ *
+ * Every stored domain is normalised through `normalizeDomain` so that
+ * "https://www.Allbirds.com/", "allbirds.com" and "ALLBIRDS.COM" all collapse
+ * to the single value "allbirds.com". This is what keeps the saved-sites list
+ * free of duplicates and what makes product URLs safe to build downstream.
+ *
+ * This is the single gate every outbound request passes through, so it is also
+ * where merchant opt-outs are enforced. Both checks live here rather than at the
+ * call sites: a filter that has to be remembered at each fetch site is a filter
+ * that eventually gets missed at one of them.
+ */
+
+import { isOptedOut, OPTED_OUT_MESSAGE } from "@/lib/opt-out"
+
 const DOMAIN_PATTERN =
   /^(?=.{1,253}$)(?!-)[a-z0-9-]{1,63}(?<!-)(\.(?!-)[a-z0-9-]{1,63}(?<!-))+$/i
 
@@ -28,7 +44,13 @@ const BLOCKED_HOST_SUFFIXES = [
 
 export type NormalizeResult =
   | { ok: true; domain: string }
-  | { ok: false; reason: string }
+  /**
+   * `optedOut` is distinct from `blocked` on purpose. A blocked host is one we
+   * will never fetch for security reasons and the user should not learn why.
+   * An opted-out host is a merchant exercising a documented request, so we say
+   * so plainly rather than disguising a policy decision as a technical error.
+   */
+  | { ok: false; reason: string; optedOut?: boolean }
 
 /**
  * Strip protocol, credentials, `www.`, paths, ports and trailing dots, then
@@ -77,6 +99,15 @@ export const normalizeDomain = (input: string): NormalizeResult => {
 
   if (isBlockedHostname(hostname)) {
     return { ok: false, reason: "That host cannot be explored." }
+  }
+
+  /*
+    Checked last, and only once the hostname is canonical, so a takedown entry
+    only has to be written the way the user would type it. See opt-out.ts for why
+    this exists and why it is a checked-in list.
+  */
+  if (isOptedOut(hostname)) {
+    return { ok: false, reason: OPTED_OUT_MESSAGE, optedOut: true }
   }
 
   return { ok: true, domain: hostname }

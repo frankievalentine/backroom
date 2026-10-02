@@ -96,7 +96,12 @@ export async function POST(request: NextRequest) {
   const normalized = normalizeDomain(rawDomain)
 
   if (!normalized.ok) {
-    return errorResponse(normalized.reason, 400)
+    // 451 rather than 400 for a merchant opt-out. The request was well formed
+    // and we are declining it for policy reasons, which is exactly what 451 is
+    // for, and it keeps the two cases distinguishable in logs: a 400 here is
+    // somebody typing a bad domain, a 451 is a documented request from a
+    // merchant.
+    return errorResponse(normalized.reason, normalized.optedOut ? 451 : 400)
   }
 
   const { domain } = normalized
