@@ -260,7 +260,15 @@ export default function HomePage() {
         </section>
       </main>
 
-      <footer className={cn("mx-auto w-full px-5 py-10 sm:px-8", PAGE_WIDTH)}>
+      {/*
+        `border-t` separates the footer from the FAQ above it. Every other
+        section on this page carries its own top rule, so the footer was the only
+        break in the page without one and read as a continuation of the FAQ
+        rather than as site chrome. Matches the rule on the legal pages.
+      */}
+      <footer
+        className={cn("mx-auto w-full border-t px-5 py-10 sm:px-8", PAGE_WIDTH)}
+      >
         <div className="space-y-4 text-sm text-muted-foreground">
           <p className="max-w-prose text-pretty">{AFFILIATION_DISCLAIMER}</p>
 
