@@ -1,33 +1,13 @@
 import type { Metadata } from "next"
-import { Suspense } from "react"
+
 import { CatalogViewer } from "@/app/backroom/backroom-client"
-import { Skeleton } from "@/components/ui/skeleton"
+import { readDomain, readStore, type StoreReadResult } from "@/lib/store-read"
 
 export const metadata: Metadata = {
   title: "Browse stores",
   description:
     "Paste a Shopify storefront URL and browse its full product catalog.",
 }
-
-const WorkspaceFallback = () => (
-  <div
-    role="status"
-    aria-busy="true"
-    aria-live="polite"
-    aria-label="Loading the catalog viewer"
-    className="mx-auto w-full max-w-7xl px-5 py-6 sm:px-8"
-  >
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-      {Array.from({ length: 8 }, (_, index) => (
-        <div key={index} className="space-y-3">
-          <Skeleton className="aspect-square w-full" />
-          <Skeleton className="h-4 w-3/4" />
-          <Skeleton className="h-3 w-1/2" />
-        </div>
-      ))}
-    </div>
-  </div>
-)
 
 /**
  * The `?domain=` param is read here rather than with `useSearchParams` in the
@@ -37,6 +17,17 @@ const WorkspaceFallback = () => (
  * and its heading all ship in the initial HTML. Reading the param from the
  * client instead would push the entire page behind a Suspense boundary, and a
  * reader arriving without JavaScript would get nothing but skeletons.
+ *
+ * The read is passed down as a promise and never awaited here. That is what lets
+ * the page stream: this component returns immediately, the client renders the
+ * full workspace, and only the product grid waits -- behind a Suspense boundary
+ * inside CatalogViewer, not around it.
+ *
+ * Awaiting the read in this component would be the obvious thing to do and is
+ * wrong. It would put the whole route behind one boundary, so the sidebar,
+ * toolbar, `<main>` and `<h1>` would all be replaced by a skeleton for the full
+ * duration of the walk. Measured on a 5,000-product store that is ten seconds
+ * with no landmark and no heading on screen.
  */
 export default async function BackroomPage({
   searchParams,
@@ -45,13 +36,25 @@ export default async function BackroomPage({
 }) {
   const params = await searchParams
   const requestedDomain = params.domain
-  const initialDomain = Array.isArray(requestedDomain)
+  const rawDomain = Array.isArray(requestedDomain)
     ? requestedDomain[0]
     : requestedDomain
 
+  /*
+    Only start a read when the input is normalisable. Without this the component
+    would suspend on a promise that can only ever resolve to an error, which
+    means flashing a skeleton before showing a message the server already knew
+    at render time.
+  */
+  const normalized = rawDomain ? readDomain(rawDomain) : null
+  const domain = normalized?.ok ? normalized.domain : null
+  const reason = normalized && !normalized.ok ? normalized.reason : null
+
+  const store: Promise<StoreReadResult> | null = domain
+    ? readStore(domain)
+    : null
+
   return (
-    <Suspense fallback={<WorkspaceFallback />}>
-      <CatalogViewer initialDomain={initialDomain} />
-    </Suspense>
+    <CatalogViewer initialDomain={domain} initialError={reason} store={store} />
   )
 }

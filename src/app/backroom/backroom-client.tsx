@@ -2,6 +2,8 @@
 
 import { AlertCircleIcon, SearchIcon, XIcon } from "lucide-react"
 import * as React from "react"
+import { Suspense, use } from "react"
+
 import { FilterSidebar } from "@/components/FilterSidebar"
 import { ProductGridSkeleton, ProductList } from "@/components/ProductList"
 import { SitePicker } from "@/components/SitePicker"
@@ -26,6 +28,7 @@ import { useSavedSites } from "@/hooks/use-saved-sites"
 import { useStoreScrape } from "@/hooks/use-store-scrape"
 import { applyFilters, EMPTY_FILTERS, searchProducts } from "@/lib/filters"
 import type { ShopifyProduct } from "@/lib/shopify"
+import type { StoreReadResult } from "@/lib/store-read"
 
 /** Products rendered per page. Keeps a large store from mounting 5,000 cards. */
 const PAGE_SIZE = 60
@@ -48,37 +51,44 @@ const usePersistedSidebar = () => {
   const [open, setOpen] = React.useState<boolean | null>(null)
 
   React.useEffect(() => {
-    try {
-      const stored = window.localStorage.getItem(SIDEBAR_STATE_KEY)
+    const stored = window.localStorage.getItem(SIDEBAR_STATE_KEY)
 
-      if (stored !== null) setOpen(stored === "true")
-    } catch {
-      // Unavailable storage: fall back to the provider's own default.
-    }
+    setOpen(stored === null ? null : stored === "true")
   }, [])
 
   const handleOpenChange = React.useCallback((next: boolean) => {
     setOpen(next)
-
-    try {
-      window.localStorage.setItem(SIDEBAR_STATE_KEY, String(next))
-    } catch {
-      // See above.
-    }
+    window.localStorage.setItem(SIDEBAR_STATE_KEY, String(next))
   }, [])
 
   return { open, handleOpenChange }
 }
 
-/** Shared by the skip link and the landmark it targets. */
 const MAIN_CONTENT_ID = "main-content"
 
 type CatalogViewerProps = {
-  /** `?domain=` read on the server, so the route can still server-render. */
-  initialDomain?: string
+  /** Canonical domain from `?domain=`, normalised on the server. */
+  initialDomain: string | null
+  /** Set when the server rejected the param, so no read is attempted. */
+  initialError: string | null
+  /**
+   * The in-flight read, or null when nothing was requested.
+   *
+   * This is passed to `StreamedProducts` rather than read here, and that is the
+   * whole point of the split. `use()` suspends the component that calls it, and
+   * anything inside its Suspense fallback is thrown away -- so suspending in
+   * this component would replace the sidebar, the `<main>` landmark and the
+   * `<h1>` with skeletons until the read finished. Suspending a leaf instead
+   * lets the page render immediately and stream the grid into it.
+   */
+  store: Promise<StoreReadResult> | null
 }
 
-export const CatalogViewer = ({ initialDomain }: CatalogViewerProps) => {
+export const CatalogViewer = ({
+  initialDomain,
+  initialError,
+  store,
+}: CatalogViewerProps) => {
   const { sites, addSite, removeSite } = useSavedSites()
   const scrape = useStoreScrape()
   const { open: sidebarOpen, handleOpenChange: handleSidebarOpenChange } =
@@ -90,48 +100,17 @@ export const CatalogViewer = ({ initialDomain }: CatalogViewerProps) => {
 
   const { domain, products, status, error, truncated, load } = scrape
 
-  // A `?domain=` link from the home page loads that store on arrival. The param
-  // is read on the server and handed in as a prop; the effect is keyed on the
-  // raw value so editing the URL picks up a different store, and refetches only
-  // when the value actually changes.
-  React.useEffect(() => {
-    if (!initialDomain) return
-
-    void load(initialDomain)
-  }, [initialDomain, load])
-
-  const visibleProducts = React.useMemo<ShopifyProduct[]>(() => {
-    const searched = searchProducts(products, query)
-    const filtered = applyFilters(searched, filters)
-
-    return filtered
-  }, [products, query, filters])
-
-  const visible = visibleProducts.slice(0, visibleCount)
-  const hasMore = visibleProducts.length > visibleCount
-
   /*
-    Reset the page window whenever the inputs behind the result set change.
-    Done during render rather than in an effect, following React's documented
-    "adjust state when props change" pattern: an effect would commit one frame
-    with the previous window, briefly showing far more products than intended.
+    The hook only takes over once the user does something. Until then the
+    streamed read is the source of truth. Keeping one source per state rather
+    than two that have to be reconciled is the whole of it: `products` is null
+    while idle, which is what tells StreamedProducts to await the promise.
   */
-  const resultKey = [
-    products.length,
-    query,
-    filters.vendors.join(","),
-    filters.productTypes.join(","),
-    filters.tags.join(","),
-    filters.priceRanges.join(","),
-    String(filters.inStockOnly),
-  ].join("|")
-
-  const [previousResultKey, setPreviousResultKey] = React.useState(resultKey)
-
-  if (previousResultKey !== resultKey) {
-    setPreviousResultKey(resultKey)
-    setVisibleCount(PAGE_SIZE)
-  }
+  const liveDomain = domain ?? initialDomain
+  const liveProducts = status === "idle" ? null : products
+  const liveError = status === "error" ? error : initialError
+  const liveTruncated = status === "idle" ? false : truncated
+  const liveStatus = status
 
   const handleSelectSite = React.useCallback(
     async (nextDomain: string) => {
@@ -158,9 +137,9 @@ export const CatalogViewer = ({ initialDomain }: CatalogViewerProps) => {
     (removedDomain: string) => {
       removeSite(removedDomain)
 
-      if (domain === removedDomain) scrape.reset()
+      if (liveDomain === removedDomain) scrape.reset()
     },
-    [domain, removeSite, scrape]
+    [liveDomain, removeSite, scrape]
   )
 
   const handleClearFilters = React.useCallback(() => {
@@ -175,11 +154,7 @@ export const CatalogViewer = ({ initialDomain }: CatalogViewerProps) => {
     }))
   }, [])
 
-  const isLoading = status === "loading"
-  const hasProducts = products.length > 0
-  const showResults = !isLoading && hasProducts && visibleProducts.length > 0
-  const showNoMatches =
-    !isLoading && hasProducts && visibleProducts.length === 0
+  const isLoading = liveStatus === "loading"
 
   return (
     <SidebarProvider
@@ -196,13 +171,13 @@ export const CatalogViewer = ({ initialDomain }: CatalogViewerProps) => {
         the sidebar's flex layout.
       */}
       <h1 className="sr-only">
-        {domain
-          ? `Product catalog for ${domain}`
+        {liveDomain
+          ? `Product catalog for ${liveDomain}`
           : "Shopify product catalog viewer"}
       </h1>
 
       <FilterSidebar
-        products={products}
+        products={liveProducts ?? []}
         filters={filters}
         onFiltersChange={setFilters}
       />
@@ -233,9 +208,9 @@ export const CatalogViewer = ({ initialDomain }: CatalogViewerProps) => {
               <div className="min-w-0 flex-1">
                 <SitePicker
                   sites={sites}
-                  selectedDomain={domain}
-                  status={status}
-                  inputError={status === "error" ? error : null}
+                  selectedDomain={liveDomain}
+                  status={liveStatus}
+                  inputError={liveStatus === "error" ? liveError : null}
                   onSelect={handleSelectSite}
                   onSubmitDomain={handleSubmitDomain}
                   onRemoveSite={handleRemoveSite}
@@ -245,187 +220,258 @@ export const CatalogViewer = ({ initialDomain }: CatalogViewerProps) => {
           </div>
 
           {/*
-              A `<div>`, not a `<main>`: SidebarInset above is already the page's
-              single main landmark, and nesting a second one leaves assistive tech
-              with nothing to treat as the page body.
-            */}
+            A `<div>`, not a `<main>`: SidebarInset above is already the page's
+            single main landmark, and nesting a second one leaves assistive tech
+            with nothing to treat as the page body.
+          */}
           <div className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6">
-            {error && status === "error" && (
-              <Alert variant="destructive" className="mb-6">
-                <AlertCircleIcon aria-hidden="true" />
-                <AlertTitle>Could not load this store</AlertTitle>
-                <AlertDescription className="text-pretty">
-                  {error}
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {truncated && (
-              <Alert className="mb-6">
-                <AlertTitle>Showing a partial catalog</AlertTitle>
-                <AlertDescription className="text-pretty">
-                  This store has more products than one scrape can reach. The
-                  counts below are a lower bound.
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {hasProducts && (
-              <div className="mb-6 flex flex-col gap-3">
-                <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                  <h2 className="text-base font-medium">
-                    {visibleProducts.length.toLocaleString()}{" "}
-                    {visibleProducts.length === 1 ? "product" : "products"}
-                    {domain && (
-                      <span className="font-normal text-muted-foreground">
-                        {" "}
-                        from {domain}
-                      </span>
-                    )}
-                  </h2>
-
-                  {products.length !== visibleProducts.length && (
-                    <p className="text-sm tabular-nums text-muted-foreground">
-                      {products.length.toLocaleString()} loaded
-                    </p>
-                  )}
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="relative min-w-0 flex-1 sm:max-w-xs">
-                    <SearchIcon
-                      aria-hidden="true"
-                      className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
-                    />
-                    <Input
-                      type="search"
-                      value={query}
-                      onChange={(event) => setQuery(event.target.value)}
-                      placeholder="Search products"
-                      aria-label="Search loaded products"
-                      className="pl-8"
-                    />
-                  </div>
-
-                  {query && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setQuery("")}
-                      className="gap-1"
-                    >
-                      <XIcon aria-hidden="true" />
-                      Clear search
-                    </Button>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {isLoading && <ProductGridSkeleton />}
-
-            {showResults && (
-              <>
-                <ProductList products={visible} domain={domain ?? ""} />
-
-                {hasMore && (
-                  <div className="mt-8 flex flex-col items-center gap-3">
-                    <p className="text-sm tabular-nums text-muted-foreground">
-                      Showing {visible.length.toLocaleString()} of{" "}
-                      {visibleProducts.length.toLocaleString()}
-                    </p>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() =>
-                        setVisibleCount((count) => count + PAGE_SIZE)
-                      }
-                    >
-                      Load{" "}
-                      {Math.min(
-                        PAGE_SIZE,
-                        visibleProducts.length - visibleCount
-                      ).toLocaleString()}{" "}
-                      more
-                    </Button>
-                  </div>
-                )}
-              </>
-            )}
-
-            {showNoMatches && (
-              <Empty className="border">
-                <EmptyHeader>
-                  <EmptyMedia variant="icon">
-                    <SearchIcon aria-hidden="true" />
-                  </EmptyMedia>
-                  <EmptyTitle>No products match</EmptyTitle>
-                  <EmptyDescription>
-                    {products.length.toLocaleString()}{" "}
-                    {products.length === 1 ? "product" : "products"} loaded,
-                    none matching the current filters.
-                  </EmptyDescription>
-                </EmptyHeader>
-                <EmptyContent>
-                  {/*
-                    When the in-stock filter is the only thing active, clearing
-                    everything is a blunt instrument. Offer the specific undo
-                    first, since it is the one the user just did.
-                  */}
-                  {filters.inStockOnly ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handleAvailabilityToggle}
-                    >
-                      Show sold out products
-                    </Button>
-                  ) : (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handleClearFilters}
-                    >
-                      Clear filters and search
-                    </Button>
-                  )}
-                </EmptyContent>
-              </Empty>
-            )}
-
-            {!hasProducts && !isLoading && status === "idle" && (
-              <Empty className="border">
-                <EmptyHeader>
-                  <EmptyMedia variant="icon">
-                    <SearchIcon aria-hidden="true" />
-                  </EmptyMedia>
-                  <EmptyTitle>No store loaded</EmptyTitle>
-                  <EmptyDescription>
-                    Enter a Shopify storefront above to pull its full product
-                    catalog. Nothing is stored on our servers.
-                  </EmptyDescription>
-                </EmptyHeader>
-              </Empty>
-            )}
-
-            {!hasProducts && !isLoading && status === "error" && (
-              <Empty className="border">
-                <EmptyHeader>
-                  <EmptyMedia variant="icon">
-                    <AlertCircleIcon aria-hidden="true" />
-                  </EmptyMedia>
-                  <EmptyTitle>Nothing to show yet</EmptyTitle>
-                  <EmptyDescription>
-                    Check the domain and try again. Some stores block automated
-                    requests entirely, which we cannot work around.
-                  </EmptyDescription>
-                </EmptyHeader>
-              </Empty>
-            )}
+            {/*
+              The Suspense boundary wraps the results area and nothing else.
+              Everything above it -- sidebar, toolbar, heading, landmarks -- is
+              already in the HTML the server sent, so the page is usable while
+              the read is still walking the store's pagination.
+            */}
+            <Suspense fallback={<ProductGridSkeleton />}>
+              <StreamedProducts
+                store={liveProducts ? null : store}
+                products={liveProducts}
+                initialError={initialError}
+                domain={liveDomain}
+                truncated={liveTruncated}
+                isLoading={isLoading}
+                filters={filters}
+                query={query}
+                setQuery={setQuery}
+                visibleCount={visibleCount}
+                setVisibleCount={setVisibleCount}
+                onClearFilters={handleClearFilters}
+                onToggleAvailability={handleAvailabilityToggle}
+              />
+            </Suspense>
           </div>
         </div>
       </SidebarInset>
     </SidebarProvider>
+  )
+}
+
+type StreamedProductsProps = {
+  /** Null when the client hook already has data and streaming is moot. */
+  store: Promise<StoreReadResult> | null
+  products: ShopifyProduct[] | null
+  initialError: string | null
+  domain: string | null
+  truncated: boolean
+  isLoading: boolean
+  filters: React.ComponentProps<typeof FilterSidebar>["filters"]
+  query: string
+  setQuery: React.Dispatch<React.SetStateAction<string>>
+  visibleCount: number
+  setVisibleCount: React.Dispatch<React.SetStateAction<number>>
+  onClearFilters: () => void
+  onToggleAvailability: () => void
+}
+
+/**
+ * Awaits the streamed read, then owns the result set.
+ *
+ * Split out of `CatalogViewer` purely so that `use()` is called in a leaf. The
+ * boundary is above this component, so everything the page is made of is already
+ * sent and this is the only part that waits.
+ */
+const StreamedProducts = ({
+  store,
+  products,
+  initialError,
+  domain,
+  truncated,
+  isLoading,
+  filters,
+  query,
+  setQuery,
+  visibleCount,
+  setVisibleCount,
+  onClearFilters,
+  onToggleAvailability,
+}: StreamedProductsProps) => {
+  const read = store ? use(store) : null
+
+  const resolvedProducts = products ?? (read?.ok ? read.products : [])
+  const resolvedError =
+    products === null && read && !read.ok ? read.error : initialError
+  const resolvedTruncated =
+    products === null && read?.ok ? read.truncated : truncated
+  const resolvedDomain = domain ?? (read?.ok ? read.domain : null)
+
+  const visibleProducts = React.useMemo<ShopifyProduct[]>(() => {
+    const searched = searchProducts(resolvedProducts, query)
+    const filtered = applyFilters(searched, filters)
+
+    return filtered
+  }, [resolvedProducts, query, filters])
+
+  const visible = visibleProducts.slice(0, visibleCount)
+  const hasMore = visibleProducts.length > visibleCount
+
+  const hasProducts = resolvedProducts.length > 0
+  const showResults = !isLoading && hasProducts && visibleProducts.length > 0
+  const showNoMatches =
+    !isLoading && hasProducts && visibleProducts.length === 0
+
+  return (
+    <>
+      {resolvedError && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertCircleIcon aria-hidden="true" />
+          <AlertTitle>Could not load this store</AlertTitle>
+          <AlertDescription className="text-pretty">
+            {resolvedError}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {resolvedTruncated && (
+        <Alert className="mb-6">
+          <AlertTitle>Showing a partial catalog</AlertTitle>
+          <AlertDescription className="text-pretty">
+            This store has more products than one scrape can reach. The counts
+            below are a lower bound.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {hasProducts && (
+        <div className="mb-6 flex flex-col gap-3">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+            <h2 className="text-base font-medium">
+              {visibleProducts.length.toLocaleString()}{" "}
+              {visibleProducts.length === 1 ? "product" : "products"}
+              {resolvedDomain && (
+                <span className="font-normal text-muted-foreground">
+                  {" "}
+                  from {resolvedDomain}
+                </span>
+              )}
+            </h2>
+
+            {resolvedProducts.length !== visibleProducts.length && (
+              <p className="text-sm tabular-nums text-muted-foreground">
+                {resolvedProducts.length.toLocaleString()} loaded
+              </p>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative min-w-0 flex-1 sm:max-w-xs">
+              <SearchIcon
+                aria-hidden="true"
+                className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
+              />
+              <Input
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search products"
+                aria-label="Search loaded products"
+                className="pl-8"
+              />
+            </div>
+
+            {query && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setQuery("")}
+                className="gap-1"
+              >
+                <XIcon aria-hidden="true" />
+                Clear search
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {isLoading && <ProductGridSkeleton />}
+
+      {showResults && (
+        <>
+          <ProductList products={visible} domain={resolvedDomain ?? ""} />
+
+          {hasMore && (
+            <div className="mt-8 flex flex-col items-center gap-3">
+              <p className="text-sm tabular-nums text-muted-foreground">
+                Showing {visible.length.toLocaleString()} of{" "}
+                {visibleProducts.length.toLocaleString()}
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setVisibleCount((count) => count + PAGE_SIZE)}
+              >
+                Load{" "}
+                {Math.min(
+                  PAGE_SIZE,
+                  visibleProducts.length - visibleCount
+                ).toLocaleString()}{" "}
+                more
+              </Button>
+            </div>
+          )}
+        </>
+      )}
+
+      {showNoMatches && (
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <SearchIcon aria-hidden="true" />
+            </EmptyMedia>
+            <EmptyTitle>No products match</EmptyTitle>
+            <EmptyDescription>
+              {resolvedProducts.length.toLocaleString()}{" "}
+              {resolvedProducts.length === 1 ? "product" : "products"} loaded,
+              none matching the current filters.
+            </EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
+            {/*
+              When the in-stock filter is the only thing active, clearing
+              everything is a blunt instrument. Offer the specific undo first,
+              since it is the one the user just did.
+            */}
+            {filters.inStockOnly ? (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onToggleAvailability}
+              >
+                Show sold out products
+              </Button>
+            ) : (
+              <Button type="button" variant="outline" onClick={onClearFilters}>
+                Clear filters and search
+              </Button>
+            )}
+          </EmptyContent>
+        </Empty>
+      )}
+
+      {!hasProducts && !isLoading && !resolvedError && (
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <SearchIcon aria-hidden="true" />
+            </EmptyMedia>
+            <EmptyTitle>No store loaded</EmptyTitle>
+            <EmptyDescription>
+              Enter a Shopify storefront above to pull its full product catalog.
+              Nothing is stored on our servers.
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      )}
+    </>
   )
 }
