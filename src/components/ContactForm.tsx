@@ -25,6 +25,7 @@ declare global {
         }
       ) => string
       reset: (widgetId: string) => void
+      remove?: (widgetId: string) => void
     }
   }
 }
@@ -59,11 +60,27 @@ export const ContactForm = ({
     null
   )
   const [widgetIssue, setWidgetIssue] = React.useState(false)
+  const [scriptReady, setScriptReady] = React.useState(false)
+  const [containerReady, setContainerReady] = React.useState(false)
   const widgetContainer = React.useRef<HTMLDivElement>(null)
   const widgetId = React.useRef<string | null>(null)
+  const setWidgetContainer = React.useCallback(
+    (node: HTMLDivElement | null) => {
+      widgetContainer.current = node
+      setContainerReady(Boolean(node))
+    },
+    []
+  )
 
-  const renderTurnstile = () => {
-    if (widgetId.current || !widgetContainer.current) return
+  React.useEffect(() => {
+    if (
+      !scriptReady ||
+      !containerReady ||
+      !widgetContainer.current ||
+      widgetId.current
+    ) {
+      return
+    }
 
     const turnstile = window.turnstile
     const sitekey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
@@ -90,7 +107,24 @@ export const ContactForm = ({
     } catch {
       setWidgetIssue(true)
     }
-  }
+  }, [containerReady, scriptReady])
+
+  React.useEffect(
+    () => () => {
+      const id = widgetId.current
+      widgetId.current = null
+
+      const turnstile = window.turnstile
+      if (id && turnstile?.remove) {
+        try {
+          turnstile.remove(id)
+        } catch {
+          // The component is already leaving; there is no widget left to recover.
+        }
+      }
+    },
+    []
+  )
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -220,7 +254,9 @@ export const ContactForm = ({
         </div>
       </div>
 
-      {/*
+      {/* Keep the message, live region, verification, and action as one tighter group. */}
+      <div className="space-y-3">
+        {/*
         Label and placeholder are generic because the form serves three
         unrelated requests: featuring a store, removal, and a general question.
         "What would you like us to change?" assumed every request was a
@@ -230,58 +266,67 @@ export const ContactForm = ({
         the domain field stays optional so a general question does not force a
         storefront into the message.
       */}
-      <div className="space-y-2">
-        <Label htmlFor="contact-message">Your message</Label>
-        <Textarea
-          id="contact-message"
-          name="message"
-          required
-          rows={5}
-          placeholder="Tell us what you need."
-          aria-invalid={messageError ? true : undefined}
-          aria-describedby={messageError ? "contact-message-error" : undefined}
-          disabled={sending}
-        />
-        {messageError && (
-          <p id="contact-message-error" className="text-sm text-destructive">
-            <span className="font-medium">Error:</span> {messageError}
-          </p>
-        )}
-      </div>
+        <div className="space-y-2">
+          <Label htmlFor="contact-message">Your message</Label>
+          <Textarea
+            id="contact-message"
+            name="message"
+            required
+            rows={5}
+            placeholder="Tell us what you need."
+            aria-invalid={messageError ? true : undefined}
+            aria-describedby={
+              messageError ? "contact-message-error" : undefined
+            }
+            disabled={sending}
+          />
+          {messageError && (
+            <p id="contact-message-error" className="text-sm text-destructive">
+              <span className="font-medium">Error:</span> {messageError}
+            </p>
+          )}
+        </div>
 
-      {/*
+        {/*
         `aria-live` on a region that is always in the DOM. Announcing a node
         that does not exist yet is unreliable, so the container is rendered
         unconditionally and only its contents change.
       */}
-      <p role="alert" aria-live="assertive" className="min-h-5 text-sm">
-        {error ? (
-          <span className="text-destructive">{error}</span>
-        ) : (
-          <span className="sr-only">
-            {sending ? "Sending your message." : ""}
-          </span>
-        )}
-      </p>
+        <p role="alert" aria-live="assertive" className="min-h-5 text-sm">
+          {error ? (
+            <span className="text-destructive">{error}</span>
+          ) : (
+            <span className="sr-only">
+              {sending ? "Sending your message." : ""}
+            </span>
+          )}
+        </p>
 
-      <div>
-        <Script
-          src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
-          strategy="afterInteractive"
-          onLoad={renderTurnstile}
-          onError={() => setWidgetIssue(true)}
-        />
-        <div ref={widgetContainer} />
-        {widgetIssue && (
-          <p className="mt-2 text-sm text-muted-foreground">
-            Verification is unavailable right now. Please refresh and try again.
-          </p>
-        )}
+        <div>
+          {/*
+          Explicit rendering provides the ID needed for reset and removal. `onReady`
+          runs again on remount after client navigation; the effect waits until the
+          container ref is committed before rendering.
+        */}
+          <Script
+            src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
+            strategy="afterInteractive"
+            onReady={() => setScriptReady(true)}
+            onError={() => setWidgetIssue(true)}
+          />
+          <div ref={setWidgetContainer} />
+          {widgetIssue && (
+            <p className="mt-2 text-sm text-muted-foreground">
+              Verification is unavailable right now. Please refresh and try
+              again.
+            </p>
+          )}
+        </div>
+
+        <Button type="submit" disabled={sending || !turnstileToken}>
+          {sending ? "Sending" : "Send request"}
+        </Button>
       </div>
-
-      <Button type="submit" disabled={sending || !turnstileToken}>
-        {sending ? "Sending" : "Send request"}
-      </Button>
     </form>
   )
 }
