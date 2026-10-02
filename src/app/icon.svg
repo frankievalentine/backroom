@@ -1,31 +1,39 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" role="img" aria-label="Backroom">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
   <title>Backroom</title>
   <!--
-    The brand mark, frozen closed: a favicon cannot animate, so this is the rest
-    state of the swing in src/components/BrandMark.tsx. Keep the two in step.
+    A favicon is not a scaled-down brand mark. It is drawn for the size it will
+    actually be seen at: 16px in a tab, sometimes 32px on a retina display.
 
-    The leaf is filled, with the knob punched out by fill-rule="evenodd" rather
-    than drawn as a separate stroked circle, so nothing here can foreshorten
-    unevenly the way a stroke does. That is the whole of the "open and closing"
-    geometry: the same fill, held shut.
+    This is the same door-in-a-doorway as BrandMark.tsx, but simplified for the
+    constraint. The brand mark's leaf has a small knob punched out of it and a
+    thin arch across the top; at 16px that reads as a grey smudge. The previous
+    version shipped the badge in #171717, which is nearly the colour of dark
+    browser chrome, so the mark was technically present and practically
+    invisible.
 
-    Drawn as a filled badge rather than a bare glyph on purpose: a transparent
-    near-black glyph is all but invisible on dark browser chrome, while the
-    badge carries its own contrast in either theme. Colours are the light-theme
-    values of --primary and --primary-foreground, since an SVG icon cannot read
-    the page's custom properties.
+    Three changes, all in service of legibility at 16px:
+
+    1. The badge is a saturated brand green rather than a near-black neutral, so
+       it separates from dark tab bars and from light ones.
+    2. The knob is dropped. Two pixels is below the threshold where a hole reads
+       as a knob rather than as noise, and its absence costs nothing because the
+       silhouette still says "door".
+    3. The leaf is widened and the opening behind it is dropped, so the shape is
+       one solid form instead of two nested arcs that merge when rasterised.
+
+    The door is left slightly ajar: the jamb sliver on the right is what makes it
+    read as a door rather than a rectangle. Closed, it would be a plain square.
+
+    Geometry is intentionally NOT kept in step with BrandMark.tsx. That file
+    carries an animated leaf; this one carries a static one drawn for a
+    different constraint. Sharing path data between them is what produced the
+    original problem.
+
+    Note: no double hyphens in this comment. XML forbids them inside a comment,
+    and a single stray one makes the whole file fail to parse, which browsers
+    report as no favicon at all.
   -->
-  <rect width="24" height="24" rx="5" fill="#171717" />
-  <path
-    d="M6 20.6V9a6 6 0 0 1 12 0v11.6Z"
-    fill="#fafafa"
-    opacity="0.16"
-  />
-  <!-- Leaf and knob as one path: evenodd punches the knob out as a hole, so the
-       faint opening behind shows through it. Identical to BrandMark.tsx. -->
-  <path
-    d="M6.6 20.4V9a5.4 5.4 0 0 1 10.8 0v11.4ZM13.5 13.6a1.05 1.05 0 1 0 2.1 0a1.05 1.05 0 1 0 -2.1 0Z"
-    fill="#fafafa"
-    fill-rule="evenodd"
-  />
+  <rect width="24" height="24" rx="5" fill="#15803d" />
+  <path d="M7 19.5V8.75a5 5 0 0 1 10 0V19.5Z" fill="#f0fdf4" />
+  <rect x="17" y="8.75" width="1.75" height="10.75" fill="#15803d" />
 </svg>
