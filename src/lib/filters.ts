@@ -175,6 +175,92 @@ export const countActiveFilters = (filters: Filters): number =>
   filters.priceRanges.length +
   (filters.inStockOnly ? 1 : 0)
 
+/** Label for the availability filter, shared by its facet row and its chip. */
+export const AVAILABILITY_FILTER_LABEL = "Hide sold out"
+
+/** Turns one active value back off, per facet. */
+export type FacetRemovers = {
+  vendors: (value: string) => void
+  productTypes: (value: string) => void
+  tags: (value: string) => void
+  priceRanges: (id: PriceRangeId) => void
+  inStockOnly: () => void
+}
+
+/**
+ * One dismissible entry in the "Applied" summary.
+ *
+ * `key` is a React identity only. It is namespaced by facet so a vendor and a
+ * product type that happen to share a string do not collide.
+ */
+export type AppliedFilterChip = {
+  key: string
+  label: string
+  onRemove: () => void
+}
+
+/**
+ * Flatten every active filter into one ordered list of chips.
+ *
+ * Derived from `Filters` in one place, on purpose. The sidebar previously
+ * enumerated four of the five facets inline and forgot `inStockOnly`, so the
+ * toggle counted towards "1 active" and narrowed the results while "Applied"
+ * showed nothing -- a count that cannot be explained by anything on screen.
+ *
+ * Every facet on `Filters` must appear here, or the chip count drifts from
+ * `countActiveFilters`: the header counts a filter that "Applied" then refuses
+ * to show. Adding a facet to `Filters` means adding it to this list in the same
+ * change -- the return value is the only place that knows the full set.
+ */
+export const getAppliedChips = (
+  filters: Filters,
+  removers: FacetRemovers
+): AppliedFilterChip[] => {
+  const chips: AppliedFilterChip[] = []
+
+  const appendFacet = (
+    keyPrefix: string,
+    values: string[],
+    onRemove: (value: string) => void
+  ) => {
+    for (const value of values) {
+      chips.push({
+        key: `${keyPrefix}-${value}`,
+        label: value,
+        onRemove: () => onRemove(value),
+      })
+    }
+  }
+
+  appendFacet("vendor", filters.vendors, removers.vendors)
+  appendFacet("type", filters.productTypes, removers.productTypes)
+  appendFacet("tag", filters.tags, removers.tags)
+
+  for (const id of filters.priceRanges) {
+    const range = getPriceRange(id)
+
+    // Unreachable for ids that came from the price checkboxes, but skipping is
+    // better than rendering a chip with no label.
+    if (!range) continue
+
+    chips.push({
+      key: `price-${id}`,
+      label: range.label,
+      onRemove: () => removers.priceRanges(id),
+    })
+  }
+
+  if (filters.inStockOnly) {
+    chips.push({
+      key: "availability",
+      label: AVAILABILITY_FILTER_LABEL,
+      onRemove: removers.inStockOnly,
+    })
+  }
+
+  return chips
+}
+
 /** Case-insensitive search across title, vendor, type, tags and SKU. */
 export const searchProducts = (
   products: ShopifyProduct[],

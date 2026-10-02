@@ -35,13 +35,16 @@ import {
 } from "@/components/ui/sidebar"
 import { BRAND_NAME } from "@/lib/brand"
 import {
+  AVAILABILITY_FILTER_LABEL,
   buildFilterOptions,
   countActiveFilters,
   EMPTY_FILTERS,
+  type FacetRemovers,
   type FilterOption,
   type FilterOptions,
   type Filters,
   hasActiveFilters as filtersAreActive,
+  getAppliedChips,
   PRICE_RANGES,
   type PriceRangeId,
   toggleValue,
@@ -182,7 +185,7 @@ const AvailabilityFacet = ({
             onToggle={() => onToggle(!inStockOnly)}
             trailing={soldOutCount > 0 ? soldOutCount : undefined}
           >
-            Hide sold out
+            {AVAILABILITY_FILTER_LABEL}
             {soldOutCount > 0 && (
               <span className="sr-only">
                 {" "}
@@ -652,6 +655,30 @@ export const FilterSidebar = ({
     onFiltersChange(EMPTY_FILTERS)
   }, [onFiltersChange])
 
+  /**
+   * How to switch each individual filter off, keyed by facet.
+   *
+   * Passed into `getAppliedChips` so the chip list can be a pure function of
+   * `Filters` plus these callbacks. That keeps the facet enumeration in
+   * `lib/filters`, where it is testable without rendering the sidebar, and
+   * stops it drifting from `countActiveFilters`.
+   */
+  const facetRemovers = React.useMemo<FacetRemovers>(
+    () => ({
+      vendors: (value: string) => handleToggle("vendors", value),
+      productTypes: (value: string) => handleToggle("productTypes", value),
+      tags: (value: string) => handleToggle("tags", value),
+      priceRanges: (id: PriceRangeId) => handlePriceToggle(id),
+      inStockOnly: () => handleAvailabilityToggle(false),
+    }),
+    [handleToggle, handlePriceToggle, handleAvailabilityToggle]
+  )
+
+  const appliedChips = React.useMemo(
+    () => getAppliedChips(filters, facetRemovers),
+    [filters, facetRemovers]
+  )
+
   // Shown on the in-stock toggle so the control explains what it hides.
   const soldOutCount = React.useMemo(
     () =>
@@ -706,8 +733,49 @@ export const FilterSidebar = ({
           soldOutCount={soldOutCount}
         />
 
+        {/*
+          Pinned above the scroll area rather than appended to the facet list.
+
+          It used to sit at the bottom of the scrolling facets, below Tags. On
+          any store with a few hundred tags that put the summary several
+          thousand pixels below the fold, so a filter that had visibly narrowed
+          the grid looked like it had not applied at all. Active filters are a
+          summary of current state, so they belong to the fixed chrome next to
+          the active count rather than in the scrolling region.
+
+          `shrink-0` is load-bearing: without it a long facet list squeezes this
+          block instead of the ScrollArea taking the overflow.
+        */}
+        {active && (
+          <section
+            aria-labelledby="active-filters"
+            className="shrink-0 space-y-2 border-b px-4 py-3 group-data-[collapsible=icon]:hidden"
+          >
+            <h3 id="active-filters" className="text-sm font-medium">
+              Applied
+            </h3>
+            {/*
+              `aria-live` so the chip list is announced as it changes, not just
+              the numeric count in the header. Removing a chip moves focus to
+              the next control, so without this a screen reader user gets no
+              confirmation the filter was dropped.
+            */}
+            <ul
+              aria-live="polite"
+              className="flex flex-wrap gap-1"
+              aria-label="Applied filters"
+            >
+              {appliedChips.map((chip) => (
+                <li key={chip.key}>
+                  <AppliedChip label={chip.label} onRemove={chip.onRemove} />
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
         <ScrollArea className="flex-1 group-data-[collapsible=icon]:hidden">
-          <div className="space-y-6 px-4 py-1 pb-8">
+          <div className="space-y-6 px-4 py-3 pb-8">
             <FacetSection
               icon={<Building2Icon className="size-4" />}
               title="Vendors"
@@ -748,59 +816,6 @@ export const FilterSidebar = ({
               searchPlaceholder="Find a tag"
               emptyMessage="No tags match that search."
             />
-
-            {active && (
-              <>
-                <Separator />
-                <section aria-labelledby="active-filters" className="space-y-2">
-                  <h3 id="active-filters" className="text-sm font-medium">
-                    Applied
-                  </h3>
-                  <ul className="flex flex-wrap gap-1">
-                    {filters.vendors.map((value) => (
-                      <li key={`vendor-${value}`}>
-                        <AppliedChip
-                          label={value}
-                          onRemove={() => handleToggle("vendors", value)}
-                        />
-                      </li>
-                    ))}
-                    {filters.productTypes.map((value) => (
-                      <li key={`type-${value}`}>
-                        <AppliedChip
-                          label={value}
-                          onRemove={() => handleToggle("productTypes", value)}
-                        />
-                      </li>
-                    ))}
-                    {filters.tags.map((value) => (
-                      <li key={`tag-${value}`}>
-                        <AppliedChip
-                          label={value}
-                          onRemove={() => handleToggle("tags", value)}
-                        />
-                      </li>
-                    ))}
-                    {filters.priceRanges.map((id) => {
-                      const range = PRICE_RANGES.find(
-                        (candidate) => candidate.id === id
-                      )
-
-                      if (!range) return null
-
-                      return (
-                        <li key={`price-${id}`}>
-                          <AppliedChip
-                            label={range.label}
-                            onRemove={() => handlePriceToggle(id)}
-                          />
-                        </li>
-                      )
-                    })}
-                  </ul>
-                </section>
-              </>
-            )}
           </div>
         </ScrollArea>
       </SidebarContent>
@@ -821,13 +836,24 @@ type AppliedChipProps = {
 const AppliedChip = ({ label, onRemove }: AppliedChipProps) => (
   <Badge variant="secondary" className="max-w-full gap-1 pr-1">
     <span className="truncate">{label}</span>
+    {/*
+      The icon needs an explicit size. `Badge` sets `[&>svg]:size-3!`, but that
+      only matches direct children, and this icon is a grandchild -- nested in
+      the button -- so it kept lucide's 24px default inside a 20px badge and
+      overflowed it.
+
+      The negative margin cancels the added padding, so the larger hit area does
+      not widen the chip: a 12px icon plus 8px padding is a 20px target, exactly
+      the badge height, at no layout cost. The previous `p-0.5` gave 16px, under
+      the 24px minimum.
+    */}
     <button
       type="button"
       onClick={onRemove}
       aria-label={`Remove ${label} filter`}
-      className="rounded-sm p-0.5 text-muted-foreground transition-colors hover:text-destructive"
+      className="-m-1 rounded-sm p-1 text-muted-foreground transition-colors hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-secondary"
     >
-      <XIcon aria-hidden="true" />
+      <XIcon className="size-3" aria-hidden="true" />
     </button>
   </Badge>
 )
