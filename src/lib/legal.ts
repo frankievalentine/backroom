@@ -12,9 +12,18 @@
  * success and dropping the message.
  */
 
-/** Where requests are delivered. Must be a mailbox you actually read. */
+/**
+ * Where requests are delivered. Must be a mailbox that actually receives mail.
+ *
+ * The fallback is deliberately an invalid address rather than a real one. With
+ * no fallback this is `string | undefined` and the route cannot pass it to
+ * Resend at all; with a real fallback, unsetting the variable in Vercel would
+ * silently redirect every takedown request to somewhere nobody is watching. An
+ * address that cannot receive mail fails visibly in review instead, which is the
+ * only acceptable outcome for the one request this form must not lose.
+ */
 export const CONTACT_EMAIL =
-  process.env.CONTACT_EMAIL
+  process.env.CONTACT_EMAIL ?? "unset-in-config@invalid.example"
 
 /** Verified Resend sender, e.g. "Backroom <noreply@yourdomain.com>". */
 export const RESEND_FROM =
