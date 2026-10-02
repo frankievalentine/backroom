@@ -73,6 +73,7 @@ const toCardData = (placement: FeaturedPlacement): FeaturedCardData => ({
   title: placement.name,
   body: placement.headline,
   href: `${TOOL_ROUTE}?domain=${encodeURIComponent(placement.domain)}`,
+  sponsored: placement.status === "live",
   meta: placement.domain,
 })
 

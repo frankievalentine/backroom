@@ -21,6 +21,8 @@ export type FeaturedCardData = {
   body: string
   /** Where the card links. Absent on filler, which is not clickable. */
   href?: string
+  /** True only for a live, paid placement; samples must not claim paid links. */
+  sponsored?: boolean
   /** Small trailing label, used for the domain on a real card. */
   meta?: string
   cta?: { href: string; label: string }
@@ -143,6 +145,7 @@ export const FeaturedCard = ({ slide }: FeaturedCardProps) => {
 
       <Link
         href={slide.href ?? TOOL_ROUTE}
+        rel={slide.sponsored ? "sponsored" : undefined}
         className="relative flex flex-1 flex-col rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
       >
         {body}

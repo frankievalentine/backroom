@@ -1,8 +1,11 @@
+import { normalizeDomain } from "@/lib/domain"
+
 /**
  * Sponsored placements on the home page. This file is the whole CMS.
  *
- * Every placement is paid and every card carries a Sponsored badge. There is no
- * `kind` field, so a store cannot appear unlabelled and read as an editorial
+ * Every live placement is paid and every card carries a Sponsored badge. A
+ * placeholder is seed data, not a commercial relationship. There is no `kind`
+ * field, so a store cannot appear unlabelled and read as an editorial
  * recommendation, which this product has no honest process to back.
  *
  * `status` starts at "placeholder" and flips to "live" when a real deal starts.
@@ -39,6 +42,33 @@ export const getFeaturedPlacements = (
   now: number = Date.now()
 ): FeaturedPlacement[] =>
   FEATURED_PLACEMENTS.filter((placement) => isActive(placement, now))
+
+/**
+ * Whether a hostname currently belongs to a real paid placement.
+ *
+ * Only `live` counts: placeholders are seed data, not evidence of a commercial
+ * relationship. Keep this aligned with the live-status distinction elsewhere,
+ * so attribution never makes a sample look like an ad.
+ */
+export const isSponsoredDomain = (
+  domain: string,
+  now: number = Date.now()
+): boolean => {
+  const normalizedDomain = normalizeDomain(domain)
+
+  if (!normalizedDomain.ok) return false
+
+  return getFeaturedPlacements(now).some((placement) => {
+    if (placement.status !== "live") return false
+
+    const normalizedPlacementDomain = normalizeDomain(placement.domain)
+
+    return (
+      normalizedPlacementDomain.ok &&
+      normalizedPlacementDomain.domain === normalizedDomain.domain
+    )
+  })
+}
 
 /** The lead slot gets the largest treatment; the first entry wins. */
 export const getHeroPlacement = (
