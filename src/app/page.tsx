@@ -135,10 +135,11 @@ export default function HomePage() {
               Browse a Shopify store&rsquo;s catalog
             </h1>
 
-            <p className="mt-5 text-lg text-pretty text-muted-foreground">
+            <p className="mt-5 max-w-lg text-lg text-pretty text-muted-foreground">
               Paste a storefront URL and get every product with its variants,
-              pricing, imagery and metadata. Then filter it down the way you
-              would in the store&rsquo;s own search.
+              pricing, imagery and metadata. Filter it down the way you would in
+              the store&rsquo;s own search, then click any product to open it on
+              the store itself.
             </p>
 
             <div className="mt-8 flex flex-wrap items-center gap-3">
