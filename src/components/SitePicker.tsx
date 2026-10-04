@@ -166,11 +166,18 @@ export const SitePicker = ({
           />
 
           <InputGroupAddon align="inline-end">
+            {/*
+              Do not disable this button for an empty draft. InputGroup's
+              `has-disabled` styles match any disabled descendant, so the old
+              empty-value guard dimmed the entire field and made it look
+              unavailable. `handleSubmit` already reports empty input inline;
+              keep the native disabled state for an in-flight scrape only.
+            */}
             <InputGroupButton
               type="submit"
               variant="ghost"
               size="icon-xs"
-              disabled={isLoading || !draft.trim()}
+              disabled={isLoading}
               aria-label="Explore this store"
             >
               {isLoading ? (
