@@ -39,12 +39,10 @@ const ProductImage = ({
   src,
   alt,
   width,
-  height,
 }: {
   src: string | null
   alt: string
   width: number | null
-  height: number | null
 }) => {
   // Track which URL failed rather than a bare boolean. Comparing against the
   // current `src` means a new image retries automatically, with no effect to
@@ -54,10 +52,11 @@ const ProductImage = ({
   if (!src || failedSrc === src) {
     return (
       /*
-        The placeholder needs to read as an image slot rather than a hole in the
-        card. `bg-muted` sits only a shade away from `bg-card` in dark mode, so
-        the surface alone was invisible; the dashed inset draws the boundary and
-        the icon confirms what the area is for.
+        Keep a failed image visibly distinct from loaded images: loaded tiles use
+        a soft white photo plate in dark mode, while this muted surface plus its
+        dashed boundary and icon communicates that no image is available. The
+        surface alone remains too close to `bg-card` in dark mode, so the dashed
+        inset is still needed to define the slot.
       */
       <div
         className="flex aspect-square w-full items-center justify-center border-b border-dashed border-border bg-muted/40"
@@ -77,19 +76,21 @@ const ProductImage = ({
     whichever store the user typed and cannot be allowlisted. See
     src/lib/shopify-image.ts for the measurements.
 
-    `width`/`height` are the declared source dimensions, not the rendered size.
-    The card is aspect-square and `object-cover`, so the browser only needs the
-    ratio to reserve space; giving it the source ratio avoids reserving a box in
-    the wrong shape for images whose width and height are missing.
+    `width` is the declared source dimension used by the Shopify CDN, not the
+    rendered size. The square class reserves a uniform tile; preserving the
+    source ratio here would make portrait products taller and break alignment.
+    We cannot detect transparency reliably at runtime: arbitrary image hosts
+    often omit CORS headers, which taints canvas reads, and checking every tile
+    would add needless per-image work.
+
+    The plate token resolves to the white card in light mode, preventing grey
+    letterbox bars around opaque storefront photos; no extra tile border is
+    needed because the card edge already defines the image area. In dark mode it
+    becomes a warm off-white: dark ink and garments remain legible, while its
+    slight step below pure white still separates white products without making a
+    whole grid glare. `object-contain` keeps the complete product visible.
   */
   const resolved = resolveProductImage({ src, width })
-
-  /*
-    The declared ratio is applied only when the payload carries both dimensions.
-    A source that reports just a width would otherwise reserve a wrong-shaped
-    box, and `aspect-square` already covers the case where neither is known.
-  */
-  const declaredRatio = width && height ? width / height : null
 
   return (
     <img
@@ -100,10 +101,8 @@ const ProductImage = ({
       loading="lazy"
       decoding="async"
       width={width ?? undefined}
-      height={height ?? undefined}
-      style={declaredRatio ? { aspectRatio: declaredRatio } : undefined}
       onError={() => setFailedSrc(src)}
-      className="aspect-square w-full bg-muted object-cover"
+      className="aspect-square w-full bg-plate object-contain"
     />
   )
 }
@@ -151,7 +150,6 @@ const ProductCard = ({
           src={image?.src ?? null}
           alt={image?.alt || product.title || "Product image"}
           width={image?.width ?? null}
-          height={image?.height ?? null}
         />
 
         {/*
@@ -161,6 +159,8 @@ const ProductCard = ({
           second cue rather than the only one.
         */}
         {!soldOut && discount !== null && (
+          // The badge keeps a dark surface and light text, so it remains distinct
+          // from the pale image plate rather than disappearing into it.
           <Badge
             variant="secondary"
             className="absolute top-2 left-2 bg-background/90 tabular-nums backdrop-blur-sm"
@@ -311,7 +311,13 @@ export const ProductGridSkeleton = () => (
     {Array.from({ length: SKELETON_COUNT }, (_, index) => (
       // The skeleton list never reorders, so the index is a stable key.
       <Card key={index} className="overflow-hidden py-0">
-        <Skeleton className="aspect-square w-full rounded-none" />
+        {/*
+          Photo placeholders use a subdued surface, then a translucent plate in
+          dark mode: that is closer to the final tile without pulsing near-white
+          blocks against the dark page. Text placeholders stay on `bg-muted`,
+          where a photo-like bright flash would be misleading.
+        */}
+        <Skeleton className="aspect-square w-full rounded-none bg-muted dark:bg-plate/35" />
         <CardHeader className="gap-1.5">
           <Skeleton className="h-4 w-3/4" />
           <Skeleton className="h-3 w-1/2" />

@@ -44,6 +44,7 @@
   --color-border: var(--border);
   --color-destructive: var(--destructive);
   --color-price: var(--price);
+  --color-plate: var(--plate);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -103,6 +104,9 @@
     5.19:1 on white and 4.76:1 on --muted.
   */
   --price: oklch(0.52 0.13 150);
+
+  /* Match the white card so contained photos do not show grey letterbox bars. */
+  --plate: var(--card);
 
   /* Dividers and card edges. Decorative, so they stay soft. */
   --border: oklch(0.88 0 0);
@@ -164,6 +168,9 @@
   --destructive: oklch(0.704 0.191 22.216);
     /* Dark counterpart: 5.90:1 on --card, 4.98:1 on --muted. */
     --price: oklch(0.65 0.15 150);
+    /* A warm off-white avoids glare while keeping dark ink and garments legible;
+       white products still separate by a perceptible lightness step. */
+    --plate: oklch(0.965 0.006 90);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
