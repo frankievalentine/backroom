@@ -44,6 +44,12 @@ export const FAQ_ENTRIES: readonly FaqEntry[] = [
       "The merchants, not us. Brand names appear only to identify whose store you are looking at. Backroom is an independent tool and is not affiliated with, endorsed by, or sponsored by Shopify or any merchant shown here.",
   },
   {
+    id: "referral-links",
+    question: "Do you earn anything when I click through to a store?",
+    answer:
+      "A store may pay for the traffic, and you should be told that rather than left to work it out. Every product link carries a referral tag so the store can see that the visit came from Backroom, and stores may pay a commission on it. A store that pays for a placement is labelled Sponsored. It costs you nothing either way: the link goes to the same product page at the same price as typing the address in yourself.",
+  },
+  {
     id: "opt-out",
     question: "I run a store. How do I get removed?",
     answer:
